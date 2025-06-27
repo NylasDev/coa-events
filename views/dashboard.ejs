@@ -206,8 +206,23 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i> <%= user.username %>
+                            <% if (canManageEvents) { %>
+                                <span class="badge bg-warning text-dark ms-1">Admin</span>
+                            <% } %>
                         </a>
                         <ul class="dropdown-menu">
+                            <% if (canManageEvents) { %>
+                                <li><h6 class="dropdown-header">
+                                    <i class="bi bi-shield-check text-warning"></i> Admin Actions
+                                </h6></li>
+                                <li><a class="dropdown-item" href="/events/create">
+                                    <i class="bi bi-plus-circle text-success"></i> Create Event
+                                </a></li>
+                                <li><a class="dropdown-item" href="/events">
+                                    <i class="bi bi-gear text-primary"></i> Manage Events
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            <% } %>
                             <li><a class="dropdown-item" href="/logout">
                                 <i class="bi bi-box-arrow-right"></i> Logout
                             </a></li>
@@ -274,6 +289,94 @@
                 </div>
             </div>
         </div>
+
+        <!-- Admin Panel (Only visible to event managers) -->
+        <% if (canManageEvents) { %>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-warning">
+                    <div class="card-header" style="background: linear-gradient(45deg, #D4A574, #CD853F); color: #654321;">
+                        <h5 class="mb-0">
+                            <i class="bi bi-gear-fill me-2"></i>
+                            <strong>Council Administration Panel</strong>
+                            <small class="ms-2 badge bg-dark">Spice Master Access</small>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="d-grid">
+                                    <a href="/events/create" class="btn btn-spice btn-lg">
+                                        <i class="bi bi-plus-circle-fill me-2"></i>
+                                        Create New Event
+                                    </a>
+                                </div>
+                                <small class="text-muted d-block mt-1 text-center">
+                                    Schedule guild activities
+                                </small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-grid">
+                                    <a href="/events" class="btn btn-outline-warning btn-lg">
+                                        <i class="bi bi-list-ul me-2"></i>
+                                        Manage Events
+                                    </a>
+                                </div>
+                                <small class="text-muted d-block mt-1 text-center">
+                                    Edit or delete events
+                                </small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-grid">
+                                    <button class="btn btn-outline-info btn-lg" onclick="showEventStats()">
+                                        <i class="bi bi-graph-up me-2"></i>
+                                        Event Statistics
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1 text-center">
+                                    View signup analytics
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <hr class="my-3" style="border-color: #D4A574;">
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="spice-accent">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Admin Status
+                                </h6>
+                                <p class="mb-1">
+                                    <strong>Access Level:</strong> 
+                                    <% if (user.username.toLowerCase() === 'nylas' || user.username.toLowerCase() === 'nylasdev' || user.username.toLowerCase() === 'nylas_') { %>
+                                        <span class="badge bg-danger">Master Admin (NylasDev)</span>
+                                    <% } else { %>
+                                        <span class="badge bg-warning text-dark">Council Administrator</span>
+                                    <% } %>
+                                </p>
+                                <p class="mb-0">
+                                    <strong>Permissions:</strong> Create, Edit, Delete Events
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="spice-accent">
+                                    <i class="bi bi-calendar-event me-1"></i>
+                                    Quick Stats
+                                </h6>
+                                <p class="mb-1">
+                                    <strong>Total Events:</strong> <span id="totalEvents">-</span>
+                                </p>
+                                <p class="mb-0">
+                                    <strong>This Month:</strong> <span id="monthEvents">-</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
 
         <!-- Calendar -->
         <div class="row">
@@ -467,6 +570,208 @@
                     '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>';
             }
         }
+        
+        <% if (canManageEvents) { %>
+        // Admin-specific functions
+        async function loadEventStats() {
+            try {
+                const response = await fetch('/api/events');
+                const events = await response.json();
+                
+                console.log('Events response:', events, 'Type:', typeof events, 'IsArray:', Array.isArray(events));
+                
+                // Ensure events is an array
+                if (!Array.isArray(events)) {
+                    console.error('Events response is not an array:', events);
+                    throw new Error('Events response is not an array');
+                }
+                
+                const totalEvents = events.length;
+                const currentMonth = new Date().getMonth() + 1;
+                const currentYear = new Date().getFullYear();
+                
+                const monthEvents = events.filter(event => {
+                    const eventDate = new Date(event.startTime);
+                    return eventDate.getMonth() + 1 === currentMonth && 
+                           eventDate.getFullYear() === currentYear;
+                }).length;
+                
+                document.getElementById('totalEvents').textContent = totalEvents;
+                document.getElementById('monthEvents').textContent = monthEvents;
+            } catch (error) {
+                console.error('Failed to load event stats:', error);
+                document.getElementById('totalEvents').textContent = 'Error';
+                document.getElementById('monthEvents').textContent = 'Error';
+            }
+        }
+        
+        function showEventStats() {
+            fetch('/api/events')
+                .then(response => response.json())
+                .then(events => {
+                    console.log('Events for stats:', events, 'Type:', typeof events, 'IsArray:', Array.isArray(events));
+                    
+                    // Ensure events is an array
+                    if (!Array.isArray(events)) {
+                        console.error('Events response is not an array:', events);
+                        throw new Error('Events response is not an array');
+                    }
+                    
+                    const stats = calculateEventStats(events);
+                    showStatsModal(stats);
+                })
+                .catch(error => {
+                    console.error('Failed to load event statistics:', error);
+                    alert('Failed to load event statistics: ' + error.message);
+                });
+        }
+        
+        function calculateEventStats(events) {
+            const now = new Date();
+            const thisMonth = now.getMonth() + 1;
+            const thisYear = now.getFullYear();
+            
+            const stats = {
+                total: events.length,
+                thisMonth: 0,
+                upcoming: 0,
+                past: 0,
+                byType: {},
+                totalSignups: 0,
+                avgSignupsPerEvent: 0
+            };
+            
+            events.forEach(event => {
+                const eventDate = new Date(event.startTime);
+                const isThisMonth = eventDate.getMonth() + 1 === thisMonth && 
+                                  eventDate.getFullYear() === thisYear;
+                
+                if (isThisMonth) stats.thisMonth++;
+                if (eventDate > now) stats.upcoming++;
+                if (eventDate < now) stats.past++;
+                
+                // Count by type
+                if (!stats.byType[event.type]) {
+                    stats.byType[event.type] = 0;
+                }
+                stats.byType[event.type]++;
+                
+                // Count signups
+                stats.totalSignups += event.signupCount || 0;
+            });
+            
+            stats.avgSignupsPerEvent = stats.total > 0 ? 
+                (stats.totalSignups / stats.total).toFixed(1) : 0;
+            
+            return stats;
+        }
+        
+        function showStatsModal(stats) {
+            const eventTypes = {
+                'spice-farming': { icon: '🏜️', name: 'Spice Farming' },
+                'raiding-base': { icon: '⚔️', name: 'Raiding Base' },
+                'ore-farming': { icon: '⛏️', name: 'Ore Farming' }
+            };
+            
+            let typeBreakdown = '';
+            for (const [type, count] of Object.entries(stats.byType)) {
+                const typeInfo = eventTypes[type] || { icon: '📅', name: type };
+                typeBreakdown += `
+                    <div class="d-flex justify-content-between">
+                        <span>${typeInfo.icon} ${typeInfo.name}</span>
+                        <span class="badge bg-secondary">${count}</span>
+                    </div>
+                `;
+            }
+            
+            const modalHtml = `
+                <div class="modal fade" id="statsModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header" style="background: linear-gradient(45deg, #D4A574, #CD853F); color: #654321;">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-graph-up me-2"></i>
+                                    Event Statistics
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <h2 class="text-primary">${stats.total}</h2>
+                                                <small class="text-muted">Total Events</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <h2 class="text-warning">${stats.thisMonth}</h2>
+                                                <small class="text-muted">This Month</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <h2 class="text-success">${stats.upcoming}</h2>
+                                                <small class="text-muted">Upcoming</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <h2 class="text-info">${stats.totalSignups}</h2>
+                                                <small class="text-muted">Total Signups</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <hr>
+                                
+                                <h6>Events by Type</h6>
+                                ${typeBreakdown}
+                                
+                                <hr>
+                                
+                                <div class="text-center">
+                                    <p class="mb-0">
+                                        <strong>Average signups per event:</strong> 
+                                        <span class="text-primary">${stats.avgSignupsPerEvent}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if present
+            const existingModal = document.getElementById('statsModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('statsModal'));
+            modal.show();
+        }
+        
+        // Load initial stats when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEventStats();
+        });
+        <% } %>
     </script>
 </body>
 </html>

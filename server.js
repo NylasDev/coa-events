@@ -10,14 +10,41 @@ const morgan = require('morgan');
 const flash = require('connect-flash');
 const rateLimit = require('express-rate-limit');
 const moment = require('moment');
-const EventsManager = require('./lib/eventsManager');
+const { initializeDatabase, createDatabaseIfNotExists } = require('./lib/database');
+const DatabaseEventsManager = require('./lib/databaseEventsManager');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize Events Manager
-const eventsManager = new EventsManager();
+// Initialize Database Events Manager
+let eventsManager;
+
+// Initialize database and events manager
+async function initializeApp() {
+    try {
+        // Create database if it doesn't exist
+        await createDatabaseIfNotExists();
+        
+        // Initialize database connection
+        const dbInitialized = await initializeDatabase();
+        if (!dbInitialized) {
+            console.error('❌ Failed to initialize database. Exiting...');
+            process.exit(1);
+        }
+
+        // Initialize events manager
+        eventsManager = new DatabaseEventsManager();
+        
+        // Create sample events
+        await eventsManager.initializeSampleEvents();
+        
+        console.log('✅ Application initialized successfully.');
+    } catch (error) {
+        console.error('❌ Failed to initialize application:', error);
+        process.exit(1);
+    }
+}
 
 // Rate limiting
 const limiter = rateLimit({
@@ -32,10 +59,13 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-      scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
-      imgSrc: ["'self'", "https:", "data:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      imgSrc: ["'self'", "https:", "data:", "https://cdn.discordapp.com"],
+      connectSrc: ["'self'"],
     },
   },
+  crossOriginEmbedderPolicy: false,
 }));
 app.use(cors());
 app.use(morgan('combined'));
@@ -144,7 +174,7 @@ function ensureEventManager(req, res, next) {
     return res.redirect('/login');
   }
   
-  if (!EventsManager.canManageEvents(req.user)) {
+  if (!DatabaseEventsManager.canManageEvents(req.user)) {
     req.flash('error', 'You do not have permission to manage events.');
     return res.redirect('/dashboard');
   }
@@ -181,14 +211,14 @@ app.get('/auth/discord/callback',
   }
 );
 
-app.get('/dashboard', ensureAuthenticated, (req, res) => {
+app.get('/dashboard', ensureAuthenticated, async (req, res) => {
   const currentDate = new Date();
   const year = parseInt(req.query.year) || currentDate.getFullYear();
   const month = parseInt(req.query.month) || (currentDate.getMonth() + 1);
   
-  const calendarData = eventsManager.getCalendarData(year, month);
-  const eventTypes = EventsManager.getEventTypes();
-  const canManageEvents = EventsManager.canManageEvents(req.user);
+  const calendarData = await eventsManager.getCalendarData(year, month);
+  const eventTypes = DatabaseEventsManager.getEventTypes();
+  const canManageEvents = DatabaseEventsManager.canManageEvents(req.user);
   
   res.render('dashboard', { 
     user: req.user,
@@ -202,10 +232,10 @@ app.get('/dashboard', ensureAuthenticated, (req, res) => {
   });
 });
 
-app.get('/events', ensureAuthenticated, (req, res) => {
-  const events = eventsManager.getAllEvents();
-  const eventTypes = EventsManager.getEventTypes();
-  const canManageEvents = EventsManager.canManageEvents(req.user);
+app.get('/events', ensureAuthenticated, async (req, res) => {
+  const events = await eventsManager.getAllEvents();
+  const eventTypes = DatabaseEventsManager.getEventTypes();
+  const canManageEvents = DatabaseEventsManager.canManageEvents(req.user);
   
   res.render('events', {
     user: req.user,
@@ -218,7 +248,7 @@ app.get('/events', ensureAuthenticated, (req, res) => {
 });
 
 app.get('/events/create', ensureEventManager, (req, res) => {
-  const eventTypes = EventsManager.getEventTypes();
+  const eventTypes = DatabaseEventsManager.getEventTypes();
   res.render('event-form', {
     user: req.user,
     messages: req.flash(),
@@ -229,7 +259,7 @@ app.get('/events/create', ensureEventManager, (req, res) => {
   });
 });
 
-app.post('/events/create', ensureEventManager, (req, res) => {
+app.post('/events/create', ensureEventManager, async (req, res) => {
   try {
     // Combine date and time inputs into a proper datetime
     const startTime = new Date(`${req.body.date}T${req.body.time}:00.000Z`);
@@ -242,7 +272,7 @@ app.post('/events/create', ensureEventManager, (req, res) => {
       maxParticipants: req.body.maxParticipants ? parseInt(req.body.maxParticipants) : null
     };
     
-    const event = eventsManager.createEvent(eventData, req.user);
+    const event = await eventsManager.createEvent(eventData, req.user);
     req.flash('success', 'Event created successfully!');
     res.redirect('/dashboard');
   } catch (error) {
@@ -251,14 +281,14 @@ app.post('/events/create', ensureEventManager, (req, res) => {
   }
 });
 
-app.get('/events/:id/edit', ensureEventManager, (req, res) => {
-  const event = eventsManager.getEvent(req.params.id);
+app.get('/events/:id/edit', ensureEventManager, async (req, res) => {
+  const event = await eventsManager.getEvent(req.params.id);
   if (!event) {
     req.flash('error', 'Event not found');
     return res.redirect('/events');
   }
   
-  const eventTypes = EventsManager.getEventTypes();
+  const eventTypes = DatabaseEventsManager.getEventTypes();
   res.render('event-form', {
     user: req.user,
     messages: req.flash(),
@@ -269,7 +299,7 @@ app.get('/events/:id/edit', ensureEventManager, (req, res) => {
   });
 });
 
-app.post('/events/:id/edit', ensureEventManager, (req, res) => {
+app.post('/events/:id/edit', ensureEventManager, async (req, res) => {
   try {
     // Combine date and time inputs into a proper datetime
     const startTime = new Date(`${req.body.date}T${req.body.time}:00.000Z`);
@@ -282,7 +312,7 @@ app.post('/events/:id/edit', ensureEventManager, (req, res) => {
       maxParticipants: req.body.maxParticipants ? parseInt(req.body.maxParticipants) : null
     };
     
-    const event = eventsManager.updateEvent(req.params.id, updateData, req.user);
+    const event = await eventsManager.updateEvent(req.params.id, updateData, req.user);
     if (!event) {
       req.flash('error', 'Event not found');
     } else {
@@ -295,8 +325,8 @@ app.post('/events/:id/edit', ensureEventManager, (req, res) => {
   }
 });
 
-app.post('/events/:id/delete', ensureEventManager, (req, res) => {
-  const deleted = eventsManager.deleteEvent(req.params.id);
+app.post('/events/:id/delete', ensureEventManager, async (req, res) => {
+  const deleted = await eventsManager.deleteEvent(req.params.id);
   if (deleted) {
     req.flash('success', 'Event deleted successfully!');
   } else {
@@ -305,14 +335,14 @@ app.post('/events/:id/delete', ensureEventManager, (req, res) => {
   res.redirect('/events');
 });
 
-app.post('/events/:id/signup', ensureAuthenticated, (req, res) => {
-  const result = eventsManager.signUpForEvent(req.params.id, req.user.id, req.user.username);
+app.post('/events/:id/signup', ensureAuthenticated, async (req, res) => {
+  const result = await eventsManager.signUpForEvent(req.params.id, req.user.id, req.user.username);
   req.flash(result.success ? 'success' : 'error', result.message);
   res.redirect('/dashboard');
 });
 
-app.post('/events/:id/remove-signup', ensureAuthenticated, (req, res) => {
-  const removed = eventsManager.removeSignup(req.params.id, req.user.id);
+app.post('/events/:id/remove-signup', ensureAuthenticated, async (req, res) => {
+  const removed = await eventsManager.removeSignup(req.params.id, req.user.id);
   if (removed) {
     req.flash('success', 'Signup removed successfully!');
   } else {
@@ -338,32 +368,46 @@ app.get('/api/user', ensureAuthenticated, (req, res) => {
     username: req.user.username,
     discriminator: req.user.discriminator,
     avatar: req.user.avatar,
-    canManageEvents: EventsManager.canManageEvents(req.user)
+    canManageEvents: DatabaseEventsManager.canManageEvents(req.user)
   });
 });
 
-app.get('/api/events', ensureAuthenticated, (req, res) => {
-  const year = parseInt(req.query.year) || new Date().getFullYear();
-  const month = parseInt(req.query.month) || (new Date().getMonth() + 1);
-  
-  const calendarData = eventsManager.getCalendarData(year, month);
-  res.json(calendarData);
+app.get('/api/events', ensureAuthenticated, async (req, res) => {
+  try {
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const month = parseInt(req.query.month) || (new Date().getMonth() + 1);
+    
+    if (req.query.format === 'calendar') {
+      // Return calendar data (object grouped by date)
+      const calendarData = await eventsManager.getCalendarData(year, month);
+      console.log('Returning calendar data:', typeof calendarData);
+      res.json(calendarData);
+    } else {
+      // Return all events as array (for statistics)
+      const events = await eventsManager.getAllEvents();
+      console.log('Returning events array:', Array.isArray(events), 'Length:', events ? events.length : 'undefined');
+      res.json(events);
+    }
+  } catch (error) {
+    console.error('Error in /api/events:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
 });
 
-app.get('/api/events/:id', ensureAuthenticated, (req, res) => {
-  const event = eventsManager.getEvent(req.params.id);
+app.get('/api/events/:id', ensureAuthenticated, async (req, res) => {
+  const event = await eventsManager.getEvent(req.params.id);
   if (!event) {
     return res.status(404).json({ error: 'Event not found' });
   }
   
-  const signups = eventsManager.getEventSignups(req.params.id);
-  const isSignedUp = eventsManager.isUserSignedUp(req.params.id, req.user.id);
+  const signups = await eventsManager.getEventSignups(req.params.id);
+  const isSignedUp = await eventsManager.isUserSignedUp(req.params.id, req.user.id);
   
   res.json({
     ...event,
     signupCount: signups.size,
     isSignedUp,
-    canManage: EventsManager.canManageEvents(req.user)
+    canManage: DatabaseEventsManager.canManageEvents(req.user)
   });
 });
 
@@ -381,7 +425,13 @@ app.use((req, res) => {
   res.status(404).render('404');
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+// Start the application
+initializeApp().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}).catch((error) => {
+  console.error('❌ Failed to start application:', error);
+  process.exit(1);
 });
