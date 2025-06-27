@@ -3,73 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COA Events - Dashboard</title>
+    <title>Events Calendar - Council of The Ancients</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #B8860B 0%, #CD853F 30%, #8B4513 70%, #654321 100%);
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #F5DEB3;
         }
         
         .navbar {
-            background: rgba(255, 255, 255, 0.1) !important;
+            background: rgba(139, 69, 19, 0.9) !important;
             backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 2px solid #D4A574;
         }
         
         .navbar-brand, .navbar-nav .nav-link {
-            color: white !important;
+            color: #F5DEB3 !important;
+            font-weight: 500;
         }
         
         .card {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(139, 69, 19, 0.8);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid #D4A574;
             border-radius: 15px;
-            color: white;
+            color: #F5DEB3;
         }
         
-        .card-header {
-            background: rgba(255, 255, 255, 0.1);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px 15px 0 0 !important;
+        .calendar {
+            background: rgba(139, 69, 19, 0.9);
+            border-radius: 15px;
+            border: 2px solid #D4A574;
         }
         
-        .user-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .stat-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 1.5rem;
+        .calendar-header {
+            background: rgba(184, 134, 11, 0.8);
+            padding: 1rem;
+            border-radius: 13px 13px 0 0;
             text-align: center;
-            transition: transform 0.3s ease;
+            border-bottom: 2px solid #D4A574;
         }
         
-        .stat-card:hover {
-            transform: translateY(-5px);
+        .calendar-nav {
+            color: #F5DEB3;
+            text-decoration: none;
+            font-size: 1.5rem;
+            margin: 0 1rem;
         }
         
-        .stat-icon {
-            font-size: 2.5rem;
-            color: #5865F2;
-            margin-bottom: 0.5rem;
+        .calendar-nav:hover {
+            color: #D4A574;
         }
         
-        .btn-primary {
-            background: #5865F2;
-            border-color: #5865F2;
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #D4A574;
+            padding: 1px;
         }
         
-        .btn-primary:hover {
-            background: #4752C4;
-            border-color: #4752C4;
+        .calendar-day-header {
+            background: rgba(184, 134, 11, 0.9);
+            padding: 0.5rem;
+            text-align: center;
+            font-weight: bold;
+            color: #8B4513;
+        }
+        
+        .calendar-day {
+            background: rgba(139, 69, 19, 0.7);
+            min-height: 120px;
+            padding: 0.5rem;
+            position: relative;
+            transition: background-color 0.3s ease;
+        }
+        
+        .calendar-day:hover {
+            background: rgba(139, 69, 19, 0.9);
+        }
+        
+        .calendar-day.other-month {
+            background: rgba(101, 67, 33, 0.5);
+            color: rgba(245, 222, 179, 0.5);
+        }
+        
+        .calendar-day.today {
+            background: rgba(184, 134, 11, 0.6);
+            border: 2px solid #D4A574;
+        }
+        
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+        
+        .event-item {
+            background: linear-gradient(45deg, rgba(212, 165, 116, 0.8), rgba(205, 133, 63, 0.8));
+            border-radius: 3px;
+            padding: 2px 4px;
+            margin: 1px 0;
+            font-size: 0.7rem;
+            border-left: 3px solid;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .event-item:hover {
+            transform: translateX(2px);
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .event-spice-farming {
+            border-left-color: #D4A574;
+        }
+        
+        .event-raiding-base {
+            border-left-color: #B85450;
+        }
+        
+        .event-ore-farming {
+            border-left-color: #708090;
+        }
+        
+        .btn-spice {
+            background: linear-gradient(45deg, #D4A574, #CD853F);
+            border: 2px solid #B8860B;
+            color: #8B4513;
+            font-weight: bold;
+        }
+        
+        .btn-spice:hover {
+            background: linear-gradient(45deg, #CD853F, #B8860B);
+            color: #654321;
         }
         
         .alert {
@@ -77,21 +146,32 @@
             border: none;
         }
         
-        .mcp-status {
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 500;
+        .modal-content {
+            background: rgba(139, 69, 19, 0.95);
+            border: 2px solid #D4A574;
+            color: #F5DEB3;
         }
         
-        .status-online {
-            background: rgba(40, 167, 69, 0.2);
-            color: #28a745;
-            border: 1px solid rgba(40, 167, 69, 0.3);
+        .modal-header {
+            border-bottom: 1px solid #D4A574;
         }
         
-        .loading-spinner {
-            display: none;
+        .modal-footer {
+            border-top: 1px solid #D4A574;
+        }
+        
+        .signup-count {
+            background: rgba(184, 134, 11, 0.8);
+            color: #8B4513;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 0.6rem;
+            font-weight: bold;
+        }
+        
+        .spice-accent {
+            color: #D4A574;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -99,7 +179,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand fw-bold" href="/">
-                <i class="bi bi-calendar-event"></i> COA Events
+                <i class="bi bi-gem"></i> Council of The Ancients
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -108,9 +188,21 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link active" href="/dashboard">
-                            <i class="bi bi-speedometer2"></i> Dashboard
+                            <i class="bi bi-calendar3"></i> Events Calendar
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/events">
+                            <i class="bi bi-list-task"></i> All Events
+                        </a>
+                    </li>
+                    <% if (canManageEvents) { %>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/events/create">
+                                <i class="bi bi-plus-circle"></i> Create Event
+                            </a>
+                        </li>
+                    <% } %>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i> <%= user.username %>
@@ -147,35 +239,35 @@
             <% } %>
         <% } %>
 
-        <!-- Welcome Section -->
+        <!-- Welcome Header -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-body p-4">
+                    <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-auto">
                                 <% if (user.avatar) { %>
-                                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=128" 
-                                         alt="<%= user.username %>" class="user-avatar">
+                                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png?size=64" 
+                                         alt="<%= user.username %>" class="rounded-circle border border-2" style="border-color: #D4A574 !important; width: 60px; height: 60px;">
                                 <% } else { %>
-                                    <div class="user-avatar d-flex align-items-center justify-content-center" 
-                                         style="background: #5865F2;">
-                                        <i class="bi bi-person-fill" style="font-size: 2rem;"></i>
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center border border-2" 
+                                         style="border-color: #D4A574 !important; background: #B8860B; width: 60px; height: 60px;">
+                                        <i class="bi bi-person-fill" style="font-size: 1.5rem; color: #8B4513;"></i>
                                     </div>
                                 <% } %>
                             </div>
                             <div class="col">
-                                <h2 class="mb-1">Welcome, <%= user.username %>!</h2>
-                                <p class="mb-0 text-light">
+                                <h2 class="mb-1">Welcome to Arrakis, <span class="spice-accent"><%= user.username %></span>!</h2>
+                                <p class="mb-0">
                                     <i class="bi bi-shield-check text-success me-1"></i>
-                                    Authenticated Discord Member
+                                    Authorized Guild Member
+                                    <% if (canManageEvents) { %>
+                                        <span class="ms-3">
+                                            <i class="bi bi-star-fill" style="color: #D4A574;"></i>
+                                            <span class="spice-accent">Event Manager</span>
+                                        </span>
+                                    <% } %>
                                 </p>
-                                <div class="mt-2">
-                                    <span class="mcp-status status-online">
-                                        <i class="bi bi-circle-fill me-1"></i>
-                                        MCP Connected
-                                    </span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -183,101 +275,88 @@
             </div>
         </div>
 
-        <!-- Stats Section -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="bi bi-people stat-icon"></i>
-                    <h4><%= user.guilds ? user.guilds.length : 0 %></h4>
-                    <p class="mb-0">Discord Servers</p>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="bi bi-calendar-check stat-icon"></i>
-                    <h4>0</h4>
-                    <p class="mb-0">Events Attended</p>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="bi bi-clock-history stat-icon"></i>
-                    <h4>New</h4>
-                    <p class="mb-0">Member Since</p>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="bi bi-star stat-icon"></i>
-                    <h4>Active</h4>
-                    <p class="mb-0">Status</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- MCP Data Section -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="bi bi-database me-2"></i>
-                            MCP Data Integration
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="mcp-data-container">
-                            <div class="text-center py-4">
-                                <div class="loading-spinner" id="loading">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <p class="mt-2">Loading MCP data...</p>
-                                </div>
-                                <div id="mcp-content">
-                                    <p class="text-light">Click the button below to load MCP data.</p>
-                                    <button class="btn btn-primary" onclick="loadMCPData()">
-                                        <i class="bi bi-cloud-download me-2"></i>
-                                        Load MCP Data
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions -->
+        <!-- Calendar -->
         <div class="row">
             <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="bi bi-lightning me-2"></i>
-                            Quick Actions
-                        </h5>
+                <div class="calendar">
+                    <div class="calendar-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="/dashboard?year=<%= currentYear %>&month=<%= currentMonth - 1 || 12 %>" class="calendar-nav">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                            <h3 class="mb-0 spice-accent">
+                                <%= moment().month(currentMonth - 1).format('MMMM') %> <%= currentYear %>
+                            </h3>
+                            <a href="/dashboard?year=<%= currentYear %>&month=<%= currentMonth + 1 > 12 ? 1 : currentMonth + 1 %>" class="calendar-nav">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </div>
                     </div>
+                    
+                    <div class="calendar-grid">
+                        <!-- Day headers -->
+                        <div class="calendar-day-header">Sun</div>
+                        <div class="calendar-day-header">Mon</div>
+                        <div class="calendar-day-header">Tue</div>
+                        <div class="calendar-day-header">Wed</div>
+                        <div class="calendar-day-header">Thu</div>
+                        <div class="calendar-day-header">Fri</div>
+                        <div class="calendar-day-header">Sat</div>
+                        
+                        <!-- Calendar days -->
+                        <%
+                            const startOfMonth = moment.utc([currentYear, currentMonth - 1]).startOf('month');
+                            const endOfMonth = moment.utc([currentYear, currentMonth - 1]).endOf('month');
+                            const startOfCalendar = moment(startOfMonth).startOf('week');
+                            const endOfCalendar = moment(endOfMonth).endOf('week');
+                            const today = moment.utc().format('YYYY-MM-DD');
+                            
+                            let currentDay = moment(startOfCalendar);
+                            while (currentDay.isSameOrBefore(endOfCalendar)) {
+                                const dayKey = currentDay.format('YYYY-MM-DD');
+                                const dayEvents = calendarData[dayKey] || [];
+                                const isCurrentMonth = currentDay.month() === (currentMonth - 1);
+                                const isToday = dayKey === today;
+                        %>
+                            <div class="calendar-day <%= !isCurrentMonth ? 'other-month' : '' %> <%= isToday ? 'today' : '' %>">
+                                <div class="day-number"><%= currentDay.date() %></div>
+                                <% dayEvents.forEach(function(event) { %>
+                                    <div class="event-item event-<%= event.type %>" 
+                                         data-bs-toggle="modal" 
+                                         data-bs-target="#eventModal" 
+                                         data-event-id="<%= event.id %>"
+                                         onclick="loadEventDetails('<%= event.id %>')">
+                                        <%= event.eventTypeInfo.icon %> <%= event.title %>
+                                        <% if (event.signupCount > 0) { %>
+                                            <span class="signup-count"><%= event.signupCount %></span>
+                                        <% } %>
+                                    </div>
+                                <% }); %>
+                            </div>
+                        <%
+                                currentDay.add(1, 'day');
+                            }
+                        %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Legend -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
                     <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-info-circle"></i> Event Types</h5>
                         <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <button class="btn btn-outline-light w-100" onclick="refreshUserData()">
-                                    <i class="bi bi-arrow-clockwise me-2"></i>
-                                    Refresh Data
-                                </button>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <button class="btn btn-outline-light w-100" onclick="viewProfile()">
-                                    <i class="bi bi-person me-2"></i>
-                                    View Profile
-                                </button>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <button class="btn btn-outline-light w-100" onclick="exportData()">
-                                    <i class="bi bi-download me-2"></i>
-                                    Export Data
-                                </button>
-                            </div>
+                            <% Object.values(eventTypes).forEach(function(eventType) { %>
+                                <div class="col-md-4 mb-2">
+                                    <span style="color: <%= eventType.color %>; font-size: 1.2rem;"><%= eventType.icon %></span>
+                                    <strong class="ms-2"><%= eventType.name %></strong>
+                                    <br>
+                                    <small class="ms-4"><%= eventType.description %></small>
+                                </div>
+                            <% }); %>
                         </div>
                     </div>
                 </div>
@@ -285,78 +364,108 @@
         </div>
     </main>
 
+    <!-- Event Modal -->
+    <div class="modal fade" id="eventModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="eventModalTitle">Event Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="eventModalBody">
+                    Loading...
+                </div>
+                <div class="modal-footer" id="eventModalFooter">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-4 mt-5" style="background: rgba(139, 69, 19, 0.9); border-top: 2px solid #D4A574;">
+        <div class="container">
+            <p>&copy; 2025 Council of The Ancients. Created by <strong>NylasDev</strong> - <a href="https://thevikingcompany.eu" class="spice-accent" target="_blank">The Viking Company</a></p>
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        async function loadMCPData() {
-            const loadingSpinner = document.getElementById('loading');
-            const mcpContent = document.getElementById('mcp-content');
-            
-            loadingSpinner.style.display = 'block';
-            mcpContent.style.display = 'none';
-            
+        async function loadEventDetails(eventId) {
             try {
-                const response = await fetch('/api/mcp-data');
-                const data = await response.json();
+                const response = await fetch(`/api/events/${eventId}`);
+                const event = await response.json();
                 
-                if (response.ok) {
-                    mcpContent.innerHTML = `
-                        <div class="alert alert-success">
-                            <h6><i class="bi bi-check-circle me-2"></i>MCP Data Loaded Successfully</h6>
-                            <p class="mb-2"><strong>Message:</strong> ${data.message}</p>
-                            <p class="mb-2"><strong>User:</strong> ${data.user}</p>
-                            <p class="mb-0"><strong>Timestamp:</strong> ${new Date(data.timestamp).toLocaleString()}</p>
+                if (!response.ok) {
+                    throw new Error(event.error || 'Failed to load event details');
+                }
+                
+                const eventTypes = {
+                    'spice-farming': { icon: '🏜️', name: 'Spice Farming', color: '#D4A574' },
+                    'raiding-base': { icon: '⚔️', name: 'Raiding Base', color: '#B85450' },
+                    'ore-farming': { icon: '⛏️', name: 'Ore Farming', color: '#708090' }
+                };
+                
+                const eventType = eventTypes[event.type];
+                const startTime = new Date(event.startTime);
+                
+                document.getElementById('eventModalTitle').innerHTML = 
+                    `${eventType.icon} ${event.title}`;
+                
+                document.getElementById('eventModalBody').innerHTML = `
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6><i class="bi bi-calendar"></i> Event Details</h6>
+                            <p><strong>Type:</strong> ${eventType.name}</p>
+                            <p><strong>Date & Time:</strong> ${startTime.toLocaleString()} UTC</p>
+                            ${event.maxParticipants ? `<p><strong>Max Participants:</strong> ${event.maxParticipants}</p>` : ''}
+                            ${event.description ? `<p><strong>Description:</strong><br>${event.description}</p>` : ''}
                         </div>
-                        <button class="btn btn-primary" onclick="loadMCPData()">
-                            <i class="bi bi-arrow-clockwise me-2"></i>
-                            Refresh
-                        </button>
-                    `;
-                } else {
-                    throw new Error(data.error || 'Failed to load MCP data');
-                }
-            } catch (error) {
-                mcpContent.innerHTML = `
-                    <div class="alert alert-danger">
-                        <h6><i class="bi bi-exclamation-triangle me-2"></i>Error Loading MCP Data</h6>
-                        <p class="mb-2">${error.message}</p>
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-people"></i> Signups (${event.signupCount})</h6>
+                            ${event.signupCount > 0 ? 
+                                `<p class="text-success">Guild members have signed up for this event!</p>` : 
+                                `<p class="text-muted">No signups yet.</p>`
+                            }
+                        </div>
                     </div>
-                    <button class="btn btn-primary" onclick="loadMCPData()">
-                        <i class="bi bi-arrow-clockwise me-2"></i>
-                        Try Again
-                    </button>
                 `;
-            } finally {
-                loadingSpinner.style.display = 'none';
-                mcpContent.style.display = 'block';
-            }
-        }
-        
-        async function refreshUserData() {
-            try {
-                const response = await fetch('/api/user');
-                const data = await response.json();
                 
-                if (response.ok) {
-                    // Update UI with fresh user data
-                    console.log('User data refreshed:', data);
-                    // You can add UI updates here
-                    alert('User data refreshed successfully!');
-                } else {
-                    throw new Error('Failed to refresh user data');
+                let footerButtons = '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>';
+                
+                if (event.isSignedUp) {
+                    footerButtons += `
+                        <form method="POST" action="/events/${eventId}/remove-signup" class="d-inline">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-x-circle"></i> Remove Signup
+                            </button>
+                        </form>
+                    `;
+                } else if (new Date(event.startTime) > new Date()) {
+                    footerButtons += `
+                        <form method="POST" action="/events/${eventId}/signup" class="d-inline">
+                            <button type="submit" class="btn btn-spice">
+                                <i class="bi bi-check-circle"></i> Sign Up
+                            </button>
+                        </form>
+                    `;
                 }
+                
+                if (event.canManage) {
+                    footerButtons += `
+                        <a href="/events/${eventId}/edit" class="btn btn-outline-light">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                    `;
+                }
+                
+                document.getElementById('eventModalFooter').innerHTML = footerButtons;
+                
             } catch (error) {
-                alert('Error refreshing user data: ' + error.message);
+                document.getElementById('eventModalBody').innerHTML = 
+                    `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> ${error.message}</div>`;
+                document.getElementById('eventModalFooter').innerHTML = 
+                    '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>';
             }
-        }
-        
-        function viewProfile() {
-            // Placeholder for profile view functionality
-            alert('Profile view functionality coming soon!');
-        }
-        
-        function exportData() {
-            // Placeholder for data export functionality
-            alert('Data export functionality coming soon!');
         }
     </script>
 </body>

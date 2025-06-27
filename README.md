@@ -1,25 +1,26 @@
-# COA Events Discord App
+# Council of The Ancients - Events Calendar
 
-A Node.js web application that provides Discord-based authentication with server-specific access control and MCP (Model Context Protocol) integration.
+A Dune Awakening themed Node.js web application for managing guild events on Discord. Built for the **Council of The Ancients** guild with Discord OAuth authentication and server-specific access control.
 
-## Features
+## 🏜️ Features
 
 - **Discord OAuth Authentication**: Secure login using Discord OAuth2
-- **Server-Based Access Control**: Only members of specified Discord servers can access the application
-- **Modern UI**: Beautiful glass-morphism design with responsive Bootstrap layout
-- **MCP Integration**: Ready for Model Context Protocol server integration
-- **Session Management**: Secure session handling with express-session
-- **Rate Limiting**: Protection against abuse with express-rate-limit
-- **Security Headers**: Helmet.js for security best practices
-- **Node 12 Compatible**: Built to work with Node.js 12+ for cPanel hosting
+- **Guild-Based Access Control**: Only COA guild members can access the application
+- **Event Management System**: Create, edit, and manage guild events (Spice Farming, Raiding Base, Ore Farming)
+- **Calendar View**: Interactive monthly calendar showing all events with signups
+- **Event Signups**: Members can sign up for events and see who else is participating
+- **Admin Controls**: Only admins and NylasDev can create/edit/delete events
+- **Dune Awakening Theme**: Beautiful desert-themed UI with spice-inspired colors
+- **Responsive Design**: Works perfectly on desktop and mobile devices
+- **Node 12 Compatible**: Built for cPanel hosting compatibility
 
-## Prerequisites
+## 🎮 Event Types
 
-- Node.js 12 or higher
-- A Discord application with OAuth2 configured
-- A Discord server where you want to restrict access
+- **🏜️ Spice Farming**: Gather the precious spice across Arrakis
+- **⚔️ Raiding Base**: Coordinate attacks on enemy strongholds  
+- **⛏️ Ore Farming**: Mining operations for valuable resources
 
-## Quick Setup
+## 🚀 Quick Setup
 
 1. **Clone and install dependencies:**
    ```bash
@@ -37,7 +38,7 @@ A Node.js web application that provides Discord-based authentication with server
    DISCORD_CLIENT_ID=your_discord_client_id_here
    DISCORD_CLIENT_SECRET=your_discord_client_secret_here
    DISCORD_REDIRECT_URI=http://localhost:3000/auth/discord/callback
-   ALLOWED_GUILD_ID=your_discord_server_id_here
+   ALLOWED_GUILD_ID=your_coa_discord_server_id_here
    SESSION_SECRET=your_random_session_secret_here
    ```
 

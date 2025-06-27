@@ -9,10 +9,15 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const flash = require('connect-flash');
 const rateLimit = require('express-rate-limit');
+const moment = require('moment');
+const EventsManager = require('./lib/eventsManager');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Initialize Events Manager
+const eventsManager = new EventsManager();
 
 // Rate limiting
 const limiter = rateLimit({
@@ -132,6 +137,21 @@ function ensureAuthenticated(req, res, next) {
   res.redirect('/');
 }
 
+// Middleware to check if user can manage events
+function ensureEventManager(req, res, next) {
+  if (!req.isAuthenticated()) {
+    req.flash('error', 'You need to login first.');
+    return res.redirect('/login');
+  }
+  
+  if (!EventsManager.canManageEvents(req.user)) {
+    req.flash('error', 'You do not have permission to manage events.');
+    return res.redirect('/dashboard');
+  }
+  
+  return next();
+}
+
 // Routes
 app.get('/', (req, res) => {
   res.render('index', { 
@@ -162,10 +182,143 @@ app.get('/auth/discord/callback',
 );
 
 app.get('/dashboard', ensureAuthenticated, (req, res) => {
+  const currentDate = new Date();
+  const year = parseInt(req.query.year) || currentDate.getFullYear();
+  const month = parseInt(req.query.month) || (currentDate.getMonth() + 1);
+  
+  const calendarData = eventsManager.getCalendarData(year, month);
+  const eventTypes = EventsManager.getEventTypes();
+  const canManageEvents = EventsManager.canManageEvents(req.user);
+  
   res.render('dashboard', { 
     user: req.user,
-    messages: req.flash()
+    messages: req.flash(),
+    calendarData,
+    eventTypes,
+    canManageEvents,
+    currentYear: year,
+    currentMonth: month,
+    moment: moment
   });
+});
+
+app.get('/events', ensureAuthenticated, (req, res) => {
+  const events = eventsManager.getAllEvents();
+  const eventTypes = EventsManager.getEventTypes();
+  const canManageEvents = EventsManager.canManageEvents(req.user);
+  
+  res.render('events', {
+    user: req.user,
+    messages: req.flash(),
+    events,
+    eventTypes,
+    canManageEvents,
+    moment: moment
+  });
+});
+
+app.get('/events/create', ensureEventManager, (req, res) => {
+  const eventTypes = EventsManager.getEventTypes();
+  res.render('event-form', {
+    user: req.user,
+    messages: req.flash(),
+    eventTypes,
+    event: null,
+    editing: false,
+    moment: moment
+  });
+});
+
+app.post('/events/create', ensureEventManager, (req, res) => {
+  try {
+    // Combine date and time inputs into a proper datetime
+    const startTime = new Date(`${req.body.date}T${req.body.time}:00.000Z`);
+    
+    const eventData = {
+      title: req.body.title,
+      type: req.body.type,
+      description: req.body.description || '',
+      startTime: startTime,
+      maxParticipants: req.body.maxParticipants ? parseInt(req.body.maxParticipants) : null
+    };
+    
+    const event = eventsManager.createEvent(eventData, req.user);
+    req.flash('success', 'Event created successfully!');
+    res.redirect('/dashboard');
+  } catch (error) {
+    req.flash('error', 'Failed to create event: ' + error.message);
+    res.redirect('/events/create');
+  }
+});
+
+app.get('/events/:id/edit', ensureEventManager, (req, res) => {
+  const event = eventsManager.getEvent(req.params.id);
+  if (!event) {
+    req.flash('error', 'Event not found');
+    return res.redirect('/events');
+  }
+  
+  const eventTypes = EventsManager.getEventTypes();
+  res.render('event-form', {
+    user: req.user,
+    messages: req.flash(),
+    eventTypes,
+    event,
+    editing: true,
+    moment: moment
+  });
+});
+
+app.post('/events/:id/edit', ensureEventManager, (req, res) => {
+  try {
+    // Combine date and time inputs into a proper datetime
+    const startTime = new Date(`${req.body.date}T${req.body.time}:00.000Z`);
+    
+    const updateData = {
+      title: req.body.title,
+      type: req.body.type,
+      description: req.body.description || '',
+      startTime: startTime,
+      maxParticipants: req.body.maxParticipants ? parseInt(req.body.maxParticipants) : null
+    };
+    
+    const event = eventsManager.updateEvent(req.params.id, updateData, req.user);
+    if (!event) {
+      req.flash('error', 'Event not found');
+    } else {
+      req.flash('success', 'Event updated successfully!');
+    }
+    res.redirect('/dashboard');
+  } catch (error) {
+    req.flash('error', 'Failed to update event: ' + error.message);
+    res.redirect('/events/' + req.params.id + '/edit');
+  }
+});
+
+app.post('/events/:id/delete', ensureEventManager, (req, res) => {
+  const deleted = eventsManager.deleteEvent(req.params.id);
+  if (deleted) {
+    req.flash('success', 'Event deleted successfully!');
+  } else {
+    req.flash('error', 'Event not found');
+  }
+  res.redirect('/events');
+});
+
+app.post('/events/:id/signup', ensureAuthenticated, (req, res) => {
+  const result = eventsManager.signUpForEvent(req.params.id, req.user.id, req.user.username);
+  req.flash(result.success ? 'success' : 'error', result.message);
+  res.redirect('/dashboard');
+});
+
+app.post('/events/:id/remove-signup', ensureAuthenticated, (req, res) => {
+  const removed = eventsManager.removeSignup(req.params.id, req.user.id);
+  if (removed) {
+    req.flash('success', 'Signup removed successfully!');
+  } else {
+    req.flash('error', 'Could not remove signup');
+  }
+  res.redirect('/dashboard');
 });
 
 app.get('/logout', (req, res) => {
@@ -178,32 +331,40 @@ app.get('/logout', (req, res) => {
   });
 });
 
-// API Routes for MCP integration
+// API Routes
 app.get('/api/user', ensureAuthenticated, (req, res) => {
   res.json({
     id: req.user.id,
     username: req.user.username,
     discriminator: req.user.discriminator,
-    avatar: req.user.avatar
+    avatar: req.user.avatar,
+    canManageEvents: EventsManager.canManageEvents(req.user)
   });
 });
 
-// MCP Integration endpoint (placeholder)
-app.get('/api/mcp-data', ensureAuthenticated, async (req, res) => {
-  try {
-    // This is where you would integrate with your MCP server
-    // For now, returning placeholder data
-    const mcpData = {
-      message: 'MCP integration placeholder',
-      user: req.user.username,
-      timestamp: new Date().toISOString()
-    };
-    
-    res.json(mcpData);
-  } catch (error) {
-    console.error('MCP API Error:', error);
-    res.status(500).json({ error: 'Failed to fetch MCP data' });
+app.get('/api/events', ensureAuthenticated, (req, res) => {
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+  const month = parseInt(req.query.month) || (new Date().getMonth() + 1);
+  
+  const calendarData = eventsManager.getCalendarData(year, month);
+  res.json(calendarData);
+});
+
+app.get('/api/events/:id', ensureAuthenticated, (req, res) => {
+  const event = eventsManager.getEvent(req.params.id);
+  if (!event) {
+    return res.status(404).json({ error: 'Event not found' });
   }
+  
+  const signups = eventsManager.getEventSignups(req.params.id);
+  const isSignedUp = eventsManager.isUserSignedUp(req.params.id, req.user.id);
+  
+  res.json({
+    ...event,
+    signupCount: signups.size,
+    isSignedUp,
+    canManage: EventsManager.canManageEvents(req.user)
+  });
 });
 
 // Error handling middleware

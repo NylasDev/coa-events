@@ -1,67 +1,216 @@
-/* Custom CSS for COA Events App */
+/* Custom CSS for COA Events App - Dune Awakening Theme */
 
 :root {
-    --primary-color: #5865F2;
-    --primary-dark: #4752C4;
-    --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --glass-bg: rgba(255, 255, 255, 0.1);
-    --glass-border: rgba(255, 255, 255, 0.2);
-    --text-light: rgba(255, 255, 255, 0.9);
+    /* Dune Awakening Color Palette */
+    --spice-gold: #D4A574;
+    --spice-orange: #CD853F;
+    --desert-brown: #8B4513;
+    --dark-brown: #654321;
+    --sand-beige: #F5DEB3;
+    --discord-blue: #5865F2;
+    --discord-dark: #4752C4;
+    
+    /* Gradients */
+    --dune-gradient: linear-gradient(135deg, #B8860B 0%, #CD853F 30%, #8B4513 70%, #654321 100%);
+    --spice-gradient: linear-gradient(45deg, #D4A574, #CD853F);
+    
+    /* Glass morphism with desert theme */
+    --glass-bg: rgba(139, 69, 19, 0.8);
+    --glass-border: #D4A574;
+    --text-light: #F5DEB3;
 }
 
 /* Global Styles */
 body {
-    background: var(--gradient-bg);
+    background: var(--dune-gradient);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-light);
+    min-height: 100vh;
 }
 
-/* Glass morphism effect */
+/* Glass morphism effect with Dune theme */
 .glass {
     background: var(--glass-bg);
     backdrop-filter: blur(10px);
-    border: 1px solid var(--glass-border);
-    border-radius: 15px;
+    border: 2px solid var(--glass-border);
+    border-radius: 20px;
 }
 
 /* Custom button styles */
 .btn-discord {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
+    background: linear-gradient(45deg, var(--discord-blue), var(--discord-dark));
+    border: 2px solid var(--discord-blue);
     color: white;
+    font-weight: bold;
     transition: all 0.3s ease;
+    border-radius: 50px;
 }
 
 .btn-discord:hover {
-    background: var(--primary-dark);
-    border-color: var(--primary-dark);
+    background: linear-gradient(45deg, var(--discord-dark), #3C4CB8);
+    border-color: var(--discord-dark);
     color: white;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4);
+}
+
+.btn-spice {
+    background: var(--spice-gradient);
+    border: 2px solid var(--spice-gold);
+    color: var(--dark-brown);
+    font-weight: bold;
+    transition: all 0.3s ease;
+    border-radius: 50px;
+}
+
+.btn-spice:hover {
+    background: linear-gradient(45deg, #B8860B, var(--spice-orange));
+    border-color: #B8860B;
+    color: var(--dark-brown);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(212, 165, 116, 0.4);
 }
 
 /* Navbar styles */
 .navbar {
     background: var(--glass-bg) !important;
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 2px solid var(--glass-border);
 }
 
 .navbar-brand, .navbar-nav .nav-link {
-    color: white !important;
+    color: var(--text-light) !important;
+    font-weight: 500;
+}
+
+.navbar-brand:hover, .navbar-nav .nav-link:hover {
+    color: var(--spice-gold) !important;
+}
+
+/* Spice accent class */
+.spice-accent {
+    color: var(--spice-gold);
+    font-weight: bold;
 }
 
 /* Card styles */
 .card {
     background: var(--glass-bg);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--glass-border);
-    border-radius: 15px;
-    color: white;
+    border: 2px solid var(--glass-border);
+    border-radius: 20px;
+    color: var(--text-light);
 }
 
 .card-header {
-    background: var(--glass-bg);
+    background: rgba(212, 165, 116, 0.2);
     border-bottom: 1px solid var(--glass-border);
+    color: var(--text-light);
+}
+
+/* Table styles */
+.table {
+    color: var(--text-light);
+}
+
+.table-dark {
+    --bs-table-bg: var(--glass-bg);
+    --bs-table-border-color: var(--glass-border);
+}
+
+/* Form styles */
+.form-control, .form-select {
+    background: rgba(139, 69, 19, 0.6);
+    border: 2px solid var(--glass-border);
+    color: var(--text-light);
+    border-radius: 10px;
+}
+
+.form-control:focus, .form-select:focus {
+    background: rgba(139, 69, 19, 0.8);
+    border-color: var(--spice-gold);
+    color: var(--text-light);
+    box-shadow: 0 0 0 0.2rem rgba(212, 165, 116, 0.25);
+}
+
+.form-control::placeholder {
+    color: rgba(245, 222, 179, 0.6);
+}
+
+/* Alert styles */
+.alert {
+    border-radius: 15px;
+    border: 2px solid;
+}
+
+.alert-success {
+    background: rgba(40, 167, 69, 0.2);
+    border-color: #28a745;
+    color: #d4edda;
+}
+
+.alert-danger {
+    background: rgba(220, 53, 69, 0.2);
+    border-color: #dc3545;
+    color: #f8d7da;
+}
+
+.alert-warning {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: #ffc107;
+    color: #fff3cd;
+}
+
+/* Footer styles */
+footer {
+    background: rgba(139, 69, 19, 0.9);
+    border-top: 2px solid var(--glass-border);
+    color: var(--text-light);
+}
+
+/* Calendar specific styles */
+.calendar-day {
+    min-height: 120px;
+    border: 1px solid var(--glass-border);
+    background: rgba(139, 69, 19, 0.3);
+    transition: all 0.3s ease;
+}
+
+.calendar-day:hover {
+    background: rgba(139, 69, 19, 0.5);
+    border-color: var(--spice-gold);
+}
+
+.event-item {
+    background: var(--spice-gradient);
+    color: var(--dark-brown);
+    border-radius: 8px;
+    padding: 4px 8px;
+    margin: 2px 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.event-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(212, 165, 116, 0.3);
+}
+
+/* Modal styles */
+.modal-content {
+    background: var(--glass-bg);
+    border: 2px solid var(--glass-border);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--glass-border);
 }
 
 /* Animation utilities */
