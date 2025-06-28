@@ -429,7 +429,12 @@
                                          data-bs-target="#eventModal" 
                                          data-event-id="<%= event.id %>"
                                          onclick="loadEventDetails('<%= event.id %>')">
-                                        <%= event.eventTypeInfo.icon %> <%= event.title %>
+                                        <% if (event.eventTypeInfo.icon.startsWith('/')) { %>
+                                            <img src="<%= event.eventTypeInfo.icon %>" alt="<%= event.eventTypeInfo.name %>" style="width: 16px; height: 16px; object-fit: contain; margin-right: 4px;">
+                                        <% } else { %>
+                                            <%= event.eventTypeInfo.icon %>
+                                        <% } %>
+                                        <%= event.title %>
                                         <% if (event.signupCount > 0) { %>
                                             <span class="signup-count"><%= event.signupCount %></span>
                                         <% } %>
@@ -454,7 +459,11 @@
                         <div class="row">
                             <% Object.values(eventTypes).forEach(function(eventType) { %>
                                 <div class="col-md-4 mb-2">
-                                    <span style="color: <%= eventType.color %>; font-size: 1.2rem;"><%= eventType.icon %></span>
+                                    <% if (eventType.icon.startsWith('/')) { %>
+                                        <img src="<%= eventType.icon %>" alt="<%= eventType.name %>" style="width: 24px; height: 24px; object-fit: contain;">
+                                    <% } else { %>
+                                        <span style="color: <%= eventType.color %>; font-size: 1.2rem;"><%= eventType.icon %></span>
+                                    <% } %>
                                     <strong class="ms-2"><%= eventType.name %></strong>
                                     <br>
                                     <small class="ms-4"><%= eventType.description %></small>
@@ -493,6 +502,42 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Function to generate Discord user avatar URL
+        function getDiscordAvatarUrl(userId, avatar) {
+            if (!avatar) {
+                return 'https://cdn.discordapp.com/embed/avatars/0.png'; // Default Discord avatar
+            }
+            return `https://cdn.discordapp.com/avatars/${userId}/${avatar}.png?size=32`;
+        }
+        
+        // Function to generate signups list with Discord avatars
+        function generateSignupsList(signups) {
+            if (!signups || signups.length === 0) {
+                return '<p class="text-muted">No signups yet.</p>';
+            }
+            
+            let signupsList = '<div class="signups-list" style="max-height: 200px; overflow-y: auto;">';
+            signups.forEach(signup => {
+                const avatarUrl = getDiscordAvatarUrl(signup.userId, signup.avatar);
+                const signupDate = new Date(signup.signedUpAt).toLocaleDateString();
+                
+                signupsList += `
+                    <div class="d-flex align-items-center mb-2 p-2" style="background: rgba(212, 165, 116, 0.1); border-radius: 8px;">
+                        <img src="${avatarUrl}" alt="${signup.username}" 
+                             style="width: 32px; height: 32px; border-radius: 50%; margin-right: 8px;"
+                             onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                        <div>
+                            <div style="font-weight: bold; color: #D4A574;">${signup.username}</div>
+                            <small style="color: rgba(245, 222, 179, 0.7);">Joined ${signupDate}</small>
+                        </div>
+                    </div>
+                `;
+            });
+            signupsList += '</div>';
+            
+            return signupsList;
+        }
+        
         async function loadEventDetails(eventId) {
             try {
                 const response = await fetch(`/api/events/${eventId}`);
@@ -503,16 +548,23 @@
                 }
                 
                 const eventTypes = {
-                    'spice-farming': { icon: '🏜️', name: 'Spice Farming', color: '#D4A574' },
+                    'spice-farming': { icon: '/icons/events/spice_large_edited.avif', name: 'Spice Farming', color: '#D4A574' },
                     'raiding-base': { icon: '⚔️', name: 'Raiding Base', color: '#B85450' },
-                    'ore-farming': { icon: '⛏️', name: 'Ore Farming', color: '#708090' }
+                    'ore-stravidium': { icon: '/icons/events/StravidiumOre.avif', name: 'Stravidium Ore Mining', color: '#9370DB' },
+                    'ore-titanium': { icon: '/icons/events/TitaniumOre.avif', name: 'Titanium Ore Mining', color: '#708090' },
+                    'dd-extraction': { icon: '/icons/events/explorationpoint_x2.avif', name: 'DD Extraction Day', color: '#4169E1' }
                 };
                 
                 const eventType = eventTypes[event.type];
                 const startTime = new Date(event.startTime);
                 
+                // Handle icon display - check if it's an image path or emoji
+                const iconDisplay = eventType.icon.startsWith('/') ? 
+                    `<img src="${eventType.icon}" alt="${eventType.name}" style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;">` : 
+                    `${eventType.icon} `;
+                
                 document.getElementById('eventModalTitle').innerHTML = 
-                    `${eventType.icon} ${event.title}`;
+                    `${iconDisplay}${event.title}`;
                 
                 document.getElementById('eventModalBody').innerHTML = `
                     <div class="row">
@@ -526,7 +578,7 @@
                         <div class="col-md-4">
                             <h6><i class="bi bi-people"></i> Signups (${event.signupCount})</h6>
                             ${event.signupCount > 0 ? 
-                                `<p class="text-success">Guild members have signed up for this event!</p>` : 
+                                generateSignupsList(event.signups) : 
                                 `<p class="text-muted">No signups yet.</p>`
                             }
                         </div>
@@ -668,17 +720,23 @@
         
         function showStatsModal(stats) {
             const eventTypes = {
-                'spice-farming': { icon: '🏜️', name: 'Spice Farming' },
+                'spice-farming': { icon: '/icons/events/spice_large_edited.avif', name: 'Spice Farming' },
                 'raiding-base': { icon: '⚔️', name: 'Raiding Base' },
-                'ore-farming': { icon: '⛏️', name: 'Ore Farming' }
+                'ore-stravidium': { icon: '/icons/events/StravidiumOre.avif', name: 'Stravidium Ore Mining' },
+                'ore-titanium': { icon: '/icons/events/TitaniumOre.avif', name: 'Titanium Ore Mining' },
+                'dd-extraction': { icon: '/icons/events/explorationpoint_x2.avif', name: 'DD Extraction Day' }
             };
             
             let typeBreakdown = '';
             for (const [type, count] of Object.entries(stats.byType)) {
                 const typeInfo = eventTypes[type] || { icon: '📅', name: type };
+                const iconDisplay = typeInfo.icon.startsWith('/') ? 
+                    `<img src="${typeInfo.icon}" alt="${typeInfo.name}" style="width: 20px; height: 20px; object-fit: contain; margin-right: 8px;">` : 
+                    `${typeInfo.icon} `;
+                
                 typeBreakdown += `
                     <div class="d-flex justify-content-between">
-                        <span>${typeInfo.icon} ${typeInfo.name}</span>
+                        <span>${iconDisplay}${typeInfo.name}</span>
                         <span class="badge bg-secondary">${count}</span>
                     </div>
                 `;

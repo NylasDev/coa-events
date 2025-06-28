@@ -336,7 +336,7 @@ app.post('/events/:id/delete', ensureEventManager, async (req, res) => {
 });
 
 app.post('/events/:id/signup', ensureAuthenticated, async (req, res) => {
-  const result = await eventsManager.signUpForEvent(req.params.id, req.user.id, req.user.username);
+  const result = await eventsManager.signUpForEvent(req.params.id, req.user);
   req.flash(result.success ? 'success' : 'error', result.message);
   res.redirect('/dashboard');
 });
@@ -405,7 +405,8 @@ app.get('/api/events/:id', ensureAuthenticated, async (req, res) => {
   
   res.json({
     ...event,
-    signupCount: signups.size,
+    signups: signups,
+    signupCount: signups.length,
     isSignedUp,
     canManage: DatabaseEventsManager.canManageEvents(req.user)
   });

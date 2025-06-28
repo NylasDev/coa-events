@@ -200,7 +200,11 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-start">
                                     <div class="event-icon" style="color: <%= eventTypes[event.type].color %>;">
-                                        <%= eventTypes[event.type].icon %>
+                                        <% if (eventTypes[event.type].icon.startsWith('/')) { %>
+                                            <img src="<%= eventTypes[event.type].icon %>" alt="<%= eventTypes[event.type].name %>" style="width: 32px; height: 32px; object-fit: contain;">
+                                        <% } else { %>
+                                            <%= eventTypes[event.type].icon %>
+                                        <% } %>
                                     </div>
                                     <div class="flex-grow-1">
                                         <h5 class="card-title mb-2">
