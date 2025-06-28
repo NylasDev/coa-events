@@ -237,7 +237,11 @@
                                                        required>
                                                 <div class="text-center">
                                                     <div style="font-size: 2rem; color: <%= typeInfo.color %>;">
-                                                        <%= typeInfo.icon %>
+                                                        <% if (typeInfo.icon.startsWith('/icons/')) { %>
+                                                            <img src="<%= typeInfo.icon %>" alt="<%= typeInfo.name %>" style="width: 2rem; height: 2rem; object-fit: contain;">
+                                                        <% } else { %>
+                                                            <%= typeInfo.icon %>
+                                                        <% } %>
                                                     </div>
                                                     <h6 class="mt-2 mb-1"><%= typeInfo.name %></h6>
                                                     <small><%= typeInfo.description %></small>
