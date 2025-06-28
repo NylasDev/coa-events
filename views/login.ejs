@@ -91,7 +91,8 @@
             border: 1px solid rgba(255, 140, 0, 0.2);
             border-radius: 24px;
             color: #e8dcc0;
-            max-width: 480px;
+            max-width: 700px;
+            min-width: 500px;
             width: 100%;
             box-shadow: 
                 0 25px 50px rgba(0, 0, 0, 0.8),
@@ -99,6 +100,7 @@
                 0 0 80px rgba(255, 140, 0, 0.05);
             position: relative;
             overflow: hidden;
+            margin: 0 auto;
         }
         
         .login-card::before {
@@ -261,9 +263,17 @@
     
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-lg-6 col-md-8">
+            <div class="col-lg-8 col-md-10">
                 <div class="login-card">
                     <div class="card-body">
+                        <div class="text-center mb-4">
+                            <!-- Discord Logo First -->
+                            <i class="bi bi-discord discord-icon mb-3"></i>
+                            <br>
+                            <!-- COA Logo Under Discord -->
+                            <img src="/images/logo/logo-32.webp" alt="Council of The Ancients Logo" style="width:80px;height:80px;object-fit:contain;margin-top:1rem;filter:drop-shadow(0 0 16px #ff8c00cc);">
+                        </div>
+                        
                         <!-- Flash messages -->
                         <% if (typeof messages !== 'undefined' && messages) { %>
                             <% if (messages.error && messages.error.length > 0) { %>
@@ -283,8 +293,6 @@
                                 <% }); %>
                             <% } %>
                         <% } %>
-                        
-                        <i class="bi bi-discord discord-icon"></i>
                         <h1 class="hero-title">Awaken on Arrakis</h1>
                         <p class="subtitle">
                             Enter the domain of the <span class="spice-accent">Council of The Ancients</span>.

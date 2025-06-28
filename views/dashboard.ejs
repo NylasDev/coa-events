@@ -394,8 +394,8 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="/">
-                <i class="bi bi-gem"></i> Council of The Ancients
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
+                <img src="/images/logo/logo-32.webp" alt="COA Logo" style="width:40px;height:40px;object-fit:cover;border-radius:50%;filter:drop-shadow(0 0 8px #ff8c00cc);">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -439,9 +439,13 @@
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
                             <% } %>
-                            <li><a class="dropdown-item" href="/logout">
-                                <i class="bi bi-box-arrow-right"></i> Return to Desert
-                            </a></li>
+                            <li>
+                                <form id="logoutForm" action="/logout" method="GET" style="display: inline;">
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bi bi-box-arrow-right"></i> Return to Desert
+                                    </button>
+                                </form>
+                            </li>
                         </ul>
                     </li>
                 </ul>
@@ -449,7 +453,7 @@
         </div>
     </nav>
 
-    <main class="container-fluid mt-4">
+    <main class="container mt-4">
         <!-- Flash messages -->
         <% if (typeof messages !== 'undefined' && messages) { %>
             <% if (messages.error && messages.error.length > 0) { %>
@@ -510,84 +514,83 @@
 
         <!-- Admin Panel (Only visible to event managers) -->
         <% if (canManageEvents) { %>
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="bi bi-crown-fill me-2"></i>
-                            <strong>Mentat Command Center</strong>
-                            <small class="ms-2 badge bg-warning text-dark">Spice Lord Access</small>
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <div class="d-grid">
-                                    <a href="/events/create" class="btn btn-spice btn-lg">
-                                        <i class="bi bi-plus-circle-fill me-2"></i>
-                                        Forge New Event
-                                    </a>
-                                </div>
-                                <small class="text-muted d-block mt-1 text-center">
-                                    Create guild operations
-                                </small>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="d-grid">
-                                    <a href="/events" class="btn btn-outline-light btn-lg">
-                                        <i class="bi bi-command me-2"></i>
-                                        Command Events
-                                    </a>
-                                </div>
-                                <small class="text-muted d-block mt-1 text-center">
-                                    Manage operations
-                                </small>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="d-grid">
-                                    <button class="btn btn-outline-light btn-lg" onclick="showEventStats()">
-                                        <i class="bi bi-graph-up me-2"></i>
-                                        Spice Analytics
-                                    </button>
-                                </div>
-                                <small class="text-muted d-block mt-1 text-center">
-                                    View harvest data
-                                </small>
-                            </div>
+        <div class="container-fluid">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="mb-0" style="font-family: 'Orbitron', monospace; font-weight: 900; letter-spacing: 2px;">
+                                Guild Operations - Old Gods - Dune Awakening
+                            </h2>
                         </div>
-                        
-                        <hr class="my-3" style="border-color: rgba(255, 140, 0, 0.3);">
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="spice-accent">
-                                    <i class="bi bi-shield-shaded me-1"></i>
-                                    Command Status
-                                </h6>
-                                <p class="mb-1">
-                                    <strong>Access Level:</strong> 
-                                    <% if (user.username.toLowerCase() === 'nylas' || user.username.toLowerCase() === 'nylasdev' || user.username.toLowerCase() === 'nylas_') { %>
-                                        <span class="badge bg-danger">Supreme Bashar</span>
-                                    <% } else { %>
-                                        <span class="badge bg-warning text-dark">Desert Mentat</span>
-                                    <% } %>
-                                </p>
-                                <p class="mb-0">
-                                    <strong>Powers:</strong> Forge, Command, Banish Events
-                                </p>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="d-grid">
+                                        <a href="/events/create" class="btn btn-spice btn-lg">
+                                            Forge New Event
+                                        </a>
+                                    </div>
+                                    <small class="text-muted d-block mt-1 text-center">
+                                        Create guild operations
+                                    </small>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-grid">
+                                        <a href="/events" class="btn btn-outline-light btn-lg">
+                                            Command Events
+                                        </a>
+                                    </div>
+                                    <small class="text-muted d-block mt-1 text-center">
+                                        Manage operations
+                                    </small>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-grid">
+                                        <button class="btn btn-outline-light btn-lg" onclick="showEventStats()">
+                                            Spice Analytics
+                                        </button>
+                                    </div>
+                                    <small class="text-muted d-block mt-1 text-center">
+                                        View harvest data
+                                    </small>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <h6 class="spice-accent">
-                                    <i class="bi bi-hourglass-split me-1"></i>
-                                    Operations Summary
-                                </h6>
-                                <p class="mb-1">
-                                    <strong>Total Operations:</strong> <span id="totalEvents">-</span>
-                                </p>
-                                <p class="mb-0">
-                                    <strong>This Cycle:</strong> <span id="monthEvents">-</span>
-                                </p>
+                            <hr class="my-3" style="border-color: rgba(255, 140, 0, 0.3);">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="spice-accent">
+                                        Command Status
+                                    </h6>
+                                    <p class="mb-1">
+                                        <strong>Access Level:</strong>
+                                        <% if (
+                                            user.username.toLowerCase() === 'nylas' ||
+                                            user.username.toLowerCase() === 'nylasdev' ||
+                                            user.username.toLowerCase() === 'nylas_') { %>
+                                            <span class="badge bg-danger">Supreme Bashar</span>
+                                        <% } else if (
+                                            user.rank && (user.rank.toLowerCase().includes('atreides') || user.rank.toLowerCase().includes('harkonnen'))) { %>
+                                            <span class="badge bg-danger"><%= user.rank %></span>
+                                        <% } else { %>
+                                            <span class="badge bg-primary">Fedaykin</span>
+                                        <% } %>
+                                    </p>
+                                    <p class="mb-0">
+                                        <strong>Powers:</strong> Forge, Command, Banish Events
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="spice-accent">
+                                        Operations Summary
+                                    </h6>
+                                    <p class="mb-1">
+                                        <strong>Total Operations:</strong> <span id="totalEvents">-</span>
+                                    </p>
+                                    <p class="mb-0">
+                                        <strong>This Cycle:</strong> <span id="monthEvents">-</span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>

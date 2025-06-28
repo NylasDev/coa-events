@@ -46,10 +46,14 @@ async function initializeApp() {
     }
 }
 
-// Rate limiting
+// Rate limiting configuration for both development and production
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs (suitable for production and development)
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: 'Too many requests from this IP, please try again after 15 minutes',
+  skipSuccessfulRequests: true // Don't count successful requests against the rate limit
 });
 
 // Middleware
@@ -58,11 +62,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
       scriptSrcAttr: ["'unsafe-inline'"],
       imgSrc: ["'self'", "https:", "data:", "https://cdn.discordapp.com"],
       connectSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -87,6 +92,15 @@ app.use(session({
 app.use(flash());
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Middleware to make user object available to all templates
+app.use((req, res, next) => {
+  res.locals.user = req.user || null;
+  res.locals.isAuthenticated = req.isAuthenticated();
+  res.locals.messages = req.flash();
+  res.locals.path = req.path; // Add current path for active navbar items
+  next();
+});
 
 // View engine setup
 app.set('view engine', 'ejs');
@@ -237,6 +251,14 @@ app.get('/events', ensureAuthenticated, async (req, res) => {
   const eventTypes = DatabaseEventsManager.getEventTypes();
   const canManageEvents = DatabaseEventsManager.canManageEvents(req.user);
   
+  // Add signup information for each event
+  for (let event of events) {
+    const signups = await eventsManager.getEventSignups(event.id);
+    event.signups = signups;
+    event.signupCount = signups.length;
+    event.isSignedUp = signups.some(signup => signup.userId === req.user.id);
+  }
+  
   res.render('events', {
     user: req.user,
     messages: req.flash(),
@@ -338,7 +360,7 @@ app.post('/events/:id/delete', ensureEventManager, async (req, res) => {
 app.post('/events/:id/signup', ensureAuthenticated, async (req, res) => {
   const result = await eventsManager.signUpForEvent(req.params.id, req.user);
   req.flash(result.success ? 'success' : 'error', result.message);
-  res.redirect('/dashboard');
+  res.redirect(req.headers.referer || '/dashboard');
 });
 
 app.post('/events/:id/remove-signup', ensureAuthenticated, async (req, res) => {
@@ -348,16 +370,35 @@ app.post('/events/:id/remove-signup', ensureAuthenticated, async (req, res) => {
   } else {
     req.flash('error', 'Could not remove signup');
   }
-  res.redirect('/dashboard');
+  res.redirect(req.headers.referer || '/dashboard');
 });
 
 app.get('/logout', (req, res) => {
+  // First set a flash message (while session is still active)
+  req.flash('success', 'You have been logged out successfully.');
+  
+  // Then perform the logout
   req.logout((err) => {
     if (err) {
       console.error('Logout error:', err);
+      return res.redirect('/dashboard'); // Redirect on error
     }
-    req.flash('success', 'You have been logged out successfully.');
-    res.redirect('/');
+    
+    // Destroy the session completely to ensure proper logout
+    req.session.destroy((sessionErr) => {
+      if (sessionErr) {
+        console.error('Session destruction error:', sessionErr);
+      }
+      
+      // Clear the session cookie directly
+      res.clearCookie('connect.sid');
+      
+      // Redirect to home page with cache control headers to prevent browser caching
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.redirect('/');
+    });
   });
 });
 

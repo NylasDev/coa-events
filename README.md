@@ -122,7 +122,7 @@ coa-events/
 ## Security Features
 
 - **Helmet.js**: Adds security headers
-- **Rate Limiting**: Prevents abuse (100 requests per 15 minutes per IP)
+- **Rate Limiting**: Prevents abuse (1000 requests per 15 minutes per IP, successful requests not counted)
 - **CORS**: Configurable cross-origin resource sharing
 - **Session Security**: Secure session cookies in production
 - **Input Validation**: Server-side validation for all inputs
