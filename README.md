@@ -9,6 +9,7 @@ A Dune Awakening themed Node.js web application for managing guild events on Dis
 - **Event Management System**: Create, edit, and manage guild events (Spice Farming, Raiding Base, Ore Farming)
 - **Calendar View**: Interactive monthly calendar showing all events with signups
 - **Event Signups**: Members can sign up for events and see who else is participating
+- **Discord Integration**: Event notifications and reminders sent to Discord with signup functionality
 - **Admin Controls**: Only admins and NylasDev can create/edit/delete events
 - **Dune Awakening Theme**: Beautiful desert-themed UI with spice-inspired colors
 - **Responsive Design**: Works perfectly on desktop and mobile devices
@@ -51,6 +52,42 @@ A Dune Awakening themed Node.js web application for managing guild events on Dis
    ```bash
    npm run dev
    ```
+
+4. **Discord Integration (Optional):**
+   For Discord notifications and commands, see [Discord Integration Guide](discord-integration.md).
+
+## 📅 Event Management
+
+### Creating Events
+- Only admins and NylasDev can create events
+- Use the "Create Event" button on the dashboard
+- Fill in event details: title, description, date, time, duration, and type
+- Optionally, set a maximum number of participants
+- Click "Save Event" to create the event
+
+### Editing Events
+- Event editing is available only to admins and NylasDev
+- Go to the event details page
+- Click "Edit Event"
+- Modify event details as needed
+- Click "Update Event" to save changes
+
+### Deleting Events
+- Only admins and NylasDev can delete events
+- Go to the event details page
+- Click "Delete Event"
+- Confirm deletion in the prompt
+
+### Event Signups
+- All guild members can sign up for events
+- Go to the event details page
+- Click "Sign Up" to participate
+- Confirm your participation in the prompt
+
+### Viewing Events
+- All users can view events on the calendar
+- Click on an event to see details
+- Event details include title, description, date, time, duration, type, and participants
 
 ## Discord Application Setup
 

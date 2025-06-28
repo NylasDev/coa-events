@@ -497,6 +497,11 @@
                                                     <button class="btn btn-outline-danger btn-sm" onclick="deleteEvent('<%= event.id %>')">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
+                                                    <form method="POST" action="/api/events/<%= event.id %>/notify" class="d-inline">
+                                                        <button type="submit" class="btn btn-outline-info btn-sm" title="Send Discord notification about this event">
+                                                            <i class="bi bi-bell"></i>
+                                                        </button>
+                                                    </form>
                                                 <% } %>
                                             </div>
                                         </div>

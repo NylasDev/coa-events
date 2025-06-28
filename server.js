@@ -39,6 +39,9 @@ async function initializeApp() {
         // Create sample events
         await eventsManager.initializeSampleEvents();
         
+        // Initialize the Discord notification system
+        await eventsManager.initializeNotifier();
+        
         console.log('✅ Application initialized successfully.');
     } catch (error) {
         console.error('❌ Failed to initialize application:', error);
@@ -413,6 +416,52 @@ app.get('/api/user', ensureAuthenticated, (req, res) => {
   });
 });
 
+// Discord webhook integration route
+app.post('/api/discord/command', async (req, res) => {
+  try {
+    // Validate webhook secret for security
+    const webhookSecret = req.headers['x-webhook-secret'];
+    if (webhookSecret !== process.env.DISCORD_WEBHOOK_SECRET) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const { command, user } = req.body;
+    
+    if (!command || !user || !user.id) {
+      return res.status(400).json({ error: 'Invalid request format' });
+    }
+    
+    // Process the command
+    const result = await eventsManager.processDiscordCommand(command, user);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error processing Discord command:', error);
+    res.status(500).json({ error: 'Failed to process command' });
+  }
+});
+
+// Manually trigger event notifications (admin only)
+app.post('/api/events/:id/notify', ensureEventManager, async (req, res) => {
+  try {
+    const event = await eventsManager.getEvent(req.params.id);
+    if (!event) {
+      req.flash('error', 'Event not found');
+      return res.redirect('/events');
+    }
+    
+    // Send notification
+    await eventsManager.eventNotifier.notifyEventChange(event);
+    
+    req.flash('success', 'Event notification sent successfully!');
+    res.redirect('/events');
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    req.flash('error', 'Failed to send notification: ' + error.message);
+    res.redirect('/events');
+  }
+});
+
 app.get('/api/events', ensureAuthenticated, async (req, res) => {
   try {
     const year = parseInt(req.query.year) || new Date().getFullYear();
@@ -454,6 +503,34 @@ app.get('/api/events/:id', ensureAuthenticated, async (req, res) => {
   };
   
   res.json(result);
+});
+
+// Webhook route for Discord notifications
+app.post('/webhook/discord', express.json(), (req, res) => {
+  const { event, data } = req.body;
+  
+  // Log the received webhook data
+  console.log('Received Discord webhook:', event, data);
+  
+  // Handle different events
+  switch (event) {
+    case 'EVENT_CREATED':
+      // Notify all users
+      eventsManager.notifyAllUsers('New event created: ' + data.title);
+      break;
+    case 'EVENT_UPDATED':
+      // Notify all users
+      eventsManager.notifyAllUsers('Event updated: ' + data.title);
+      break;
+    case 'EVENT_DELETED':
+      // Notify all users
+      eventsManager.notifyAllUsers('Event deleted: ' + data.title);
+      break;
+    default:
+      console.log('Unknown event type:', event);
+  }
+  
+  res.sendStatus(200);
 });
 
 // Error handling middleware
