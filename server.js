@@ -395,6 +395,7 @@ app.get('/api/events', ensureAuthenticated, async (req, res) => {
 });
 
 app.get('/api/events/:id', ensureAuthenticated, async (req, res) => {
+  console.log('API call for event:', req.params.id);
   const event = await eventsManager.getEvent(req.params.id);
   if (!event) {
     return res.status(404).json({ error: 'Event not found' });
@@ -403,13 +404,15 @@ app.get('/api/events/:id', ensureAuthenticated, async (req, res) => {
   const signups = await eventsManager.getEventSignups(req.params.id);
   const isSignedUp = await eventsManager.isUserSignedUp(req.params.id, req.user.id);
   
-  res.json({
+  const result = {
     ...event,
     signups: signups,
     signupCount: signups.length,
     isSignedUp,
     canManage: DatabaseEventsManager.canManageEvents(req.user)
-  });
+  };
+  
+  res.json(result);
 });
 
 // Error handling middleware

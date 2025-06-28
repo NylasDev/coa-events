@@ -519,7 +519,6 @@
             let signupsList = '<div class="signups-list" style="max-height: 200px; overflow-y: auto;">';
             signups.forEach(signup => {
                 const avatarUrl = getDiscordAvatarUrl(signup.userId, signup.avatar);
-                const signupDate = new Date(signup.signedUpAt).toLocaleDateString();
                 
                 signupsList += `
                     <div class="d-flex align-items-center mb-2 p-2" style="background: rgba(212, 165, 116, 0.1); border-radius: 8px;">
@@ -528,7 +527,6 @@
                              onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
                         <div>
                             <div style="font-weight: bold; color: #D4A574;">${signup.username}</div>
-                            <small style="color: rgba(245, 222, 179, 0.7);">Joined ${signupDate}</small>
                         </div>
                     </div>
                 `;
