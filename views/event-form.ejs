@@ -272,8 +272,6 @@
             border-color: rgba(108, 117, 125, 0.7);
             color: #e8dcc0;
         }
-    </style>
-        }
         
         .event-type-card:hover {
             border-color: #D4A574;
@@ -306,8 +304,9 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="/">
-                <i class="bi bi-gem"></i> Council of The Ancients
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
+                <img src="/images/logo/LOGO-32.webp" alt="COA Logo" style="width:40px;height:40px;object-fit:cover;border-radius:50%;filter:drop-shadow(0 0 8px #ff8c00cc);">
+                <span class="ms-2">Council of The Ancients</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -441,7 +440,7 @@
                                            class="form-control" 
                                            id="date" 
                                            name="date" 
-                                           value="<%= editing ? event.startTime.split('T')[0] : '' %>"
+                                           value="<%= editing ? (typeof event.startTime === 'string' ? event.startTime.split('T')[0] : moment(event.startTime).format('YYYY-MM-DD')) : '' %>"
                                            min="<%= new Date().toISOString().split('T')[0] %>"
                                            required>
                                 </div>
@@ -453,7 +452,7 @@
                                            class="form-control" 
                                            id="time" 
                                            name="time" 
-                                           value="<%= editing ? event.startTime.split('T')[1].substring(0, 5) : '' %>"
+                                           value="<%= editing ? (typeof event.startTime === 'string' ? event.startTime.split('T')[1].substring(0, 5) : moment(event.startTime).format('HH:mm')) : '' %>"
                                            required>
                                 </div>
                             </div>

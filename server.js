@@ -441,7 +441,8 @@ app.post('/api/discord/command', async (req, res) => {
   }
 });
 
-// Manually trigger event notifications (admin only)
+// Manually trigger event notifications (admin only) (commented out for now)
+/*
 app.post('/api/events/:id/notify', ensureEventManager, async (req, res) => {
   try {
     const event = await eventsManager.getEvent(req.params.id);
@@ -461,6 +462,7 @@ app.post('/api/events/:id/notify', ensureEventManager, async (req, res) => {
     res.redirect('/events');
   }
 });
+*/
 
 app.get('/api/events', ensureAuthenticated, async (req, res) => {
   try {
