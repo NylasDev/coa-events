@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Logout Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .logout-options {
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .logout-option {
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: calc(50% - 30px);
+            box-sizing: border-box;
+        }
+        .logout-option h3 {
+            margin-top: 0;
+        }
+        button, .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        button:hover, .button:hover {
+            background-color: #45a049;
+        }
+        .logs {
+            margin-top: 30px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Logout Test Page</h1>
+        <p>This page tests different logout methods to help debug logout issues.</p>
+        
+        <div class="logout-options">
+            <div class="logout-option">
+                <h3>Standard Form POST</h3>
+                <p>Uses a standard form with POST method</p>
+                <form action="/logout" method="POST">
+                    <button type="submit">Logout with POST</button>
+                </form>
+            </div>
+            
+            <div class="logout-option">
+                <h3>Standard Form GET</h3>
+                <p>Uses a standard form with GET method (not recommended)</p>
+                <form action="/logout" method="GET">
+                    <button type="submit">Logout with GET</button>
+                </form>
+            </div>
+            
+            <div class="logout-option">
+                <h3>Fetch API (POST)</h3>
+                <p>Uses Fetch API with POST method</p>
+                <button onclick="logoutWithFetch('POST')">Logout with Fetch POST</button>
+            </div>
+            
+            <div class="logout-option">
+                <h3>Fetch API (GET)</h3>
+                <p>Uses Fetch API with GET method</p>
+                <button onclick="logoutWithFetch('GET')">Logout with Fetch GET</button>
+            </div>
+            
+            <div class="logout-option">
+                <h3>Direct Link</h3>
+                <p>Direct anchor link to logout (not recommended)</p>
+                <a href="/logout" class="button">Logout Direct Link (GET)</a>
+            </div>
+            
+            <div class="logout-option">
+                <h3>XMLHttpRequest</h3>
+                <p>Uses old school XMLHttpRequest</p>
+                <button onclick="logoutWithXHR()">Logout with XHR</button>
+            </div>
+        </div>
+        
+        <div class="logs" id="logs">
+            <p>Logs will appear here...</p>
+        </div>
+    </div>
+    
+    <script>
+        // Log function
+        function log(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
+            logsDiv.innerHTML += `<p>[${timestamp}] ${message}</p>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        // Fetch API logout
+        function logoutWithFetch(method) {
+            log(`Attempting logout via Fetch API (${method})...`);
+            
+            fetch(`/logout?_t=${Date.now()}`, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                log(`Response received: status=${response.status}, redirected=${response.redirected}`);
+                
+                if (response.redirected) {
+                    log(`Redirecting to: ${response.url}`);
+                    window.location.href = response.url;
+                } else if (response.ok) {
+                    log('Logout successful but no redirect, manually going to home page');
+                    setTimeout(() => { window.location.href = '/'; }, 1000);
+                } else {
+                    log(`Error: Unexpected response status: ${response.status}`);
+                }
+            })
+            .catch(error => {
+                log(`Error: ${error.message}`);
+            });
+        }
+        
+        // XMLHttpRequest logout
+        function logoutWithXHR() {
+            log('Attempting logout via XMLHttpRequest...');
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `/logout?_t=${Date.now()}`, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            xhr.setRequestHeader('Pragma', 'no-cache');
+            
+            xhr.onload = function() {
+                log(`Response received: status=${xhr.status}`);
+                
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    log('Logout successful, manually going to home page');
+                    setTimeout(() => { window.location.href = '/'; }, 1000);
+                } else {
+                    log(`Error: Unexpected response status: ${xhr.status}`);
+                }
+            };
+            
+            xhr.onerror = function() {
+                log('Error: Request failed');
+            };
+            
+            xhr.send();
+        }
+        
+        // Log initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Logout test page loaded');
+        });
+    </script>
+</body>
+</html>

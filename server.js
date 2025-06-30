@@ -8,6 +8,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const flash = require('connect-flash');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const moment = require('moment');
 const { initializeDatabase, createDatabaseIfNotExists } = require('./lib/database');
@@ -66,7 +67,7 @@ const limiter = rateLimit({
     const ip = req.headers['x-forwarded-for'] || 
                req.connection.remoteAddress || 
                req.socket.remoteAddress || 
-               req.connection.socket?.remoteAddress;
+               (req.connection.socket && req.connection.socket.remoteAddress);
     return ip;
   }
 });
@@ -91,6 +92,7 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser(process.env.SESSION_SECRET || 'fallback-secret-change-this')); // Must be before session middleware
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Session configuration
@@ -393,37 +395,121 @@ app.post('/events/:id/remove-signup', ensureAuthenticated, async (req, res) => {
 
 // Support both GET and POST for logout to ensure compatibility
 function handleLogout(req, res) {
-  // First set a flash message (while session is still active)
-  req.flash('success', 'You have been logged out successfully.');
+  console.log('\n==== LOGOUT HANDLER STARTED ====');
+  console.log(`Logout request received: ${req.method} ${req.originalUrl}`);
+  console.log('Headers:', req.headers);
+  console.log('Session ID:', req.sessionID);
+  console.log('User authenticated:', req.isAuthenticated());
+  console.log('User details:', req.user ? JSON.stringify(req.user) : 'No user object');
   
-  // Then perform the logout
-  req.logout((err) => {
-    if (err) {
-      console.error('Logout error:', err);
-      return res.redirect('/dashboard'); // Redirect on error
-    }
+  // Add a safeguard timeout to ensure the response completes
+  const logoutTimeout = setTimeout(() => {
+    console.log('⚠️ LOGOUT TIMEOUT TRIGGERED - Force completing response');
     
-    // Destroy the session completely to ensure proper logout
-    req.session.destroy((sessionErr) => {
-      if (sessionErr) {
-        console.error('Session destruction error:', sessionErr);
-      }
+    if (!res.headersSent) {
+      // Get the session cookie name
+      const cookieName = req.sessionID ? 'connect.sid' : 'connect.sid';
+      console.log('Using cookie name for clearing (timeout):', cookieName);
       
-      // Clear the session cookie directly with proper options
-      res.clearCookie('connect.sid', {
+      // Clear cookie one last time
+      res.clearCookie(cookieName, { 
+        path: '/', 
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production' && process.env.APP_URL.startsWith('https'),
+        sameSite: 'lax'
+      });
+      
+      // Force redirect
+      res.redirect('/');
+    }
+  }, 5000); // 5 second safety timeout
+  
+  try {
+    // First, destroy the session directly to bypass any potential issues with passport.logout
+    if (req.session) {
+      req.session.destroy(function(sessionErr) {
+        console.log('\n---- SESSION DESTROY DIRECT APPROACH ----');
+        
+        if (sessionErr) {
+          console.error('❌ Direct session destruction error:', sessionErr);
+        } else {
+          console.log('✅ Session directly destroyed');
+        }
+        
+        // Get the session cookie name from the express-session config
+        const sessionConfig = app._router.stack
+          .filter(layer => layer.name === 'session')
+          .map(layer => layer.handle)[0];
+        
+        // Default cookie name is 'connect.sid' but it could be changed in config
+        const cookieName = (sessionConfig && sessionConfig.name) ? 
+          sessionConfig.name : 'connect.sid';
+          
+        console.log('Using cookie name for clearing:', cookieName);
+        
+        // Check all cookies in the request to debug
+        if (req.headers.cookie) {
+          console.log('Available cookies:', req.headers.cookie);
+        }
+        
+        // Clear the session cookie directly with proper options
+        res.clearCookie(cookieName, {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production' && process.env.APP_URL.startsWith('https'),
+          sameSite: 'lax'
+        });
+        
+        // Set response headers to prevent caching
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.setHeader('X-Logout-Direct', 'true');
+        
+        // Cancel timeout as we're completing normally
+        clearTimeout(logoutTimeout);
+        
+        console.log('==== DIRECT LOGOUT COMPLETED ====\n');
+        return res.redirect('/');
+      });
+    } else {
+      console.log('No session found to destroy');
+      
+      // Get the session cookie name
+      const cookieName = 'connect.sid';
+      console.log('Using cookie name for clearing (no session):', cookieName);
+      
+      // Clear cookie anyway
+      res.clearCookie(cookieName, {
         path: '/',
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production' && process.env.APP_URL.startsWith('https'),
         sameSite: 'lax'
       });
       
-      // Redirect to home page with cache control headers to prevent browser caching
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      res.redirect('/');
+      // Cancel timeout as we're completing normally
+      clearTimeout(logoutTimeout);
+      
+      console.log('==== NO SESSION LOGOUT COMPLETED ====\n');
+      return res.redirect('/');
+    }
+  } catch (error) {
+    console.error('❌❌❌ Unhandled error in logout process:', error);
+    
+    // Emergency cleanup - clear cookie and redirect
+    res.clearCookie('connect.sid', { 
+      path: '/', 
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' && process.env.APP_URL.startsWith('https'),
+      sameSite: 'lax'
     });
-  });
+    
+    // Cancel timeout as we're completing with error
+    clearTimeout(logoutTimeout);
+    
+    console.log('==== LOGOUT HANDLER ERROR COMPLETED ====\n');
+    return res.redirect('/');
+  }
 }
 
 // Support both GET and POST methods for logout
