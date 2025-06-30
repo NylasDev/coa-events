@@ -79,8 +79,8 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com", "https://npmcdn.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://npmcdn.com"],
       scriptSrcAttr: ["'unsafe-inline'"],
       imgSrc: ["'self'", "https:", "data:", "https://cdn.discordapp.com"],
       connectSrc: ["'self'"],
@@ -371,7 +371,38 @@ app.post('/events/create', ensureEventManager, async (req, res) => {
     });
     
     // Combine date and time inputs into a proper datetime
-    const startTime = new Date(`${req.body.date}T${req.body.time}:00.000Z`);
+    // Parse using local time (not UTC)
+    const dateParts = req.body.date.split('-');
+    const timeParts = req.body.time.split(':');
+    
+    // Create date from parts (year, month index, day, hour, minute)
+    // Note: month is 0-indexed in JavaScript Date
+    const startTime = new Date(
+      parseInt(dateParts[0]),         // year
+      parseInt(dateParts[1]) - 1,     // month (0-indexed)
+      parseInt(dateParts[2]),         // day
+      parseInt(timeParts[0]),         // hour
+      parseInt(timeParts[1])          // minute
+    );
+    
+    console.log('Created startTime from local date parts:', {
+      year: parseInt(dateParts[0]),
+      month: parseInt(dateParts[1]) - 1,
+      day: parseInt(dateParts[2]),
+      hour: parseInt(timeParts[0]),
+      minute: parseInt(timeParts[1]),
+      startTime: startTime
+    });
+    
+    // Log if event is in the past (for debugging) but allow it
+    const now = new Date();
+    if (startTime < now) {
+      console.log('Creating event in the past:', { 
+        startTime: startTime.toISOString(),
+        now: now.toISOString() 
+      });
+      // No more restrictions on past events - allow them
+    }
     
     const eventData = {
       title: req.body.title,
@@ -411,7 +442,38 @@ app.get('/events/:id/edit', ensureEventManager, async (req, res) => {
 app.post('/events/:id/edit', ensureEventManager, async (req, res) => {
   try {
     // Combine date and time inputs into a proper datetime
-    const startTime = new Date(`${req.body.date}T${req.body.time}:00.000Z`);
+    // Parse using local time (not UTC)
+    const dateParts = req.body.date.split('-');
+    const timeParts = req.body.time.split(':');
+    
+    // Create date from parts (year, month index, day, hour, minute)
+    // Note: month is 0-indexed in JavaScript Date
+    const startTime = new Date(
+      parseInt(dateParts[0]),         // year
+      parseInt(dateParts[1]) - 1,     // month (0-indexed)
+      parseInt(dateParts[2]),         // day
+      parseInt(timeParts[0]),         // hour
+      parseInt(timeParts[1])          // minute
+    );
+    
+    console.log('Created startTime for edit from local date parts:', {
+      year: parseInt(dateParts[0]),
+      month: parseInt(dateParts[1]) - 1,
+      day: parseInt(dateParts[2]),
+      hour: parseInt(timeParts[0]),
+      minute: parseInt(timeParts[1]),
+      startTime: startTime
+    });
+    
+    // Log if event is in the past (for debugging) but allow it
+    const now = new Date();
+    if (startTime < now) {
+      console.log('Editing event in the past:', { 
+        startTime: startTime.toISOString(),
+        now: now.toISOString() 
+      });
+      // No more restrictions on past events - allow them
+    }
     
     const updateData = {
       title: req.body.title,

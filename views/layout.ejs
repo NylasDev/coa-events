@@ -28,6 +28,20 @@
             background: radial-gradient(ellipse at center, var(--dune-dark) 0%, var(--dune-black) 70%);
             min-height: 100vh;
             font-family: 'Exo 2', sans-serif;
+        }
+        
+        /* Fix for modal backdrop issues */
+        .modal-backdrop {
+            z-index: 1040 !important;
+        }
+        
+        .modal {
+            z-index: 1050 !important;
+        }
+        
+        /* Reset body styles when modal is closed but backdrop remains */
+        body:not(.modal-open) .modal-backdrop {
+            display: none !important;
             color: var(--dune-text);
             position: relative;
         }
@@ -159,6 +173,64 @@
             border: 1px solid rgba(40, 167, 69, 0.5);
             color: #51cf66;
         }
+        
+        /* Toast styling for notifications */
+        .toast {
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--dune-orange);
+            color: var(--dune-text);
+            font-family: 'Exo 2', sans-serif;
+            border-radius: 10px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        
+        .toast-header {
+            background: rgba(255, 107, 0, 0.2);
+            color: var(--dune-orange);
+            border-bottom: 1px solid var(--dune-orange-dark);
+        }
+        
+        .toast-body {
+            padding: 12px 15px;
+        }
+        
+        .toast.bg-success {
+            border-color: #28a745;
+        }
+        
+        .toast.bg-success .toast-header {
+            background: rgba(40, 167, 69, 0.2);
+            color: #51cf66;
+            border-color: #28a745;
+        }
+        
+        .toast.bg-danger {
+            border-color: #dc3545;
+        }
+        
+        .toast.bg-danger .toast-header {
+            background: rgba(220, 53, 69, 0.2);
+            color: #ff6b6b;
+            border-color: #dc3545;
+        }
+        
+        .toast.bg-info {
+            border-color: #0dcaf0;
+        }
+        
+        .toast.bg-info .toast-header {
+            background: rgba(13, 202, 240, 0.2);
+            color: #39d9ff;
+            border-color: #0dcaf0;
+        }
     </style>
 </head>
 <body>
@@ -232,22 +304,16 @@
     </nav>
 
     <main class="container mt-4">
-        <!-- Flash messages -->
+        <!-- Flash messages - Hidden but used to trigger toasts via JS -->
         <% if (typeof messages !== 'undefined' && messages) { %>
             <% if (messages.error && messages.error.length > 0) { %>
-                <% messages.error.forEach(function(error) { %>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="bi bi-exclamation-triangle me-2"></i> <%= error %>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <% messages.error.forEach(function(error, index) { %>
+                    <div id="toast-error-<%= index %>" class="d-none" data-message="<%= error %>" data-type="danger"></div>
                 <% }); %>
             <% } %>
             <% if (messages.success && messages.success.length > 0) { %>
-                <% messages.success.forEach(function(success) { %>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <i class="bi bi-check-circle me-2"></i> <%= success %>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <% messages.success.forEach(function(success, index) { %>
+                    <div id="toast-success-<%= index %>" class="d-none" data-message="<%= success %>" data-type="success"></div>
                 <% }); %>
             <% } %>
         <% } %>
@@ -256,6 +322,125 @@
         <%- body %>
     </main>
 
+    <!-- Toast container for notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">
+        <!-- Toasts will be inserted here dynamically -->
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/notifications.js"></script>
+    
+    <!-- Toast notifications script -->
+    <script>
+        // Function to show toast notifications
+        function showToast(message, type = 'success', title = '') {
+            // Set default titles based on type
+            if (!title) {
+                switch(type) {
+                    case 'success':
+                        title = 'Success';
+                        break;
+                    case 'danger':
+                        title = 'Error';
+                        break;
+                    case 'info':
+                        title = 'Information';
+                        break;
+                    case 'warning':
+                        title = 'Warning';
+                        break;
+                    default:
+                        title = 'Notification';
+                }
+            }
+            
+            // Get icon based on type
+            let icon = 'bi-check-circle-fill';
+            switch(type) {
+                case 'danger':
+                    icon = 'bi-exclamation-triangle-fill';
+                    break;
+                case 'info':
+                    icon = 'bi-info-circle-fill';
+                    break;
+                case 'warning':
+                    icon = 'bi-exclamation-circle-fill';
+                    break;
+            }
+            
+            // Create toast element
+            const toastElement = document.createElement('div');
+            toastElement.className = `toast bg-${type} text-white`;
+            toastElement.setAttribute('role', 'alert');
+            toastElement.setAttribute('aria-live', 'assertive');
+            toastElement.setAttribute('aria-atomic', 'true');
+            
+            toastElement.innerHTML = `
+                <div class="toast-header">
+                    <i class="bi ${icon} me-2"></i>
+                    <strong class="me-auto">${title}</strong>
+                    <small>Just now</small>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            `;
+            
+            // Add to container
+            document.getElementById('toastContainer').appendChild(toastElement);
+            
+            // Initialize and show toast
+            const toast = new bootstrap.Toast(toastElement, {
+                delay: 5000,
+                autohide: true
+            });
+            toast.show();
+            
+            // Remove from DOM after hiding
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                toastElement.remove();
+            });
+        }
+        
+        // Show toasts for flash messages
+        document.addEventListener('DOMContentLoaded', () => {
+            // Convert hidden flash message elements to toasts
+            document.querySelectorAll('[id^="toast-"]').forEach(el => {
+                const message = el.dataset.message;
+                const type = el.dataset.type || 'info';
+                if (message) {
+                    showToast(message, type);
+                }
+            });
+            
+            // For form submissions, show a loading toast
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                form.addEventListener('submit', (e) => {
+                    // Ignore logout form
+                    if (form.id === 'logoutForm') return;
+                    
+                    const submitButtons = form.querySelectorAll('button[type="submit"]');
+                    const actionType = form.dataset.action || 'Submitting';
+                    
+                    showToast(`${actionType}... Please wait`, 'info');
+                    
+                    // Disable submit buttons to prevent double submission
+                    submitButtons.forEach(button => {
+                        button.disabled = true;
+                        const originalText = button.innerHTML;
+                        button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Processing...';
+                        
+                        // Re-enable after 5 seconds if form submission takes too long
+                        setTimeout(() => {
+                            button.disabled = false;
+                            button.innerHTML = originalText;
+                        }, 5000);
+                    });
+                });
+            });
+        });
+    </script>
 </body>
 </html>

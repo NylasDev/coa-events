@@ -470,7 +470,14 @@
                                             </div>
                                             
                                             <div class="btn-group" role="group">
-                                                <% if (moment(event.startTime).isAfter(moment())) { %>
+                                                <% 
+                                                    // Allow signup for same day events
+                                                    // Create yesterday's date for comparison
+                                                    const yesterday = moment().subtract(1, 'days').endOf('day');
+                                                    const isBeforeYesterday = moment(event.startTime).isBefore(yesterday);
+                                                    
+                                                    if (!isBeforeYesterday) { 
+                                                %>
                                                     <% if (event.isSignedUp) { %>
                                                         <form method="POST" action="/events/<%= event.id %>/remove-signup" class="d-inline me-1">
                                                             <button type="submit" class="btn btn-warning btn-sm">

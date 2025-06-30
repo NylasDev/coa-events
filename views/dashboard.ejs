@@ -735,7 +735,32 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/notifications.js"></script>
     <script>
+        // Store modal instance globally for proper handling
+        let eventModal;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the modal once
+            const modalElement = document.getElementById('eventModal');
+            
+            // Handle modal hidden event to properly clean up backdrop
+            modalElement.addEventListener('hidden.bs.modal', function () {
+                // Remove any lingering backdrop
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.remove();
+                }
+                // Remove modal-open class from body
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            });
+            
+            // Create the bootstrap modal instance
+            eventModal = new bootstrap.Modal(modalElement);
+        });
+        
         // Function to generate Discord user avatar URL
         function getDiscordAvatarUrl(userId, avatar) {
             if (!avatar) {
@@ -828,14 +853,24 @@
                             </button>
                         </form>
                     `;
-                } else if (new Date(event.startTime) > new Date()) {
-                    footerButtons += `
-                        <form method="POST" action="/events/${eventId}/signup" class="d-inline">
-                            <button type="submit" class="btn btn-spice">
-                                <i class="bi bi-check-circle"></i> Sign Up
-                            </button>
-                        </form>
-                    `;
+                } else {
+                    // Allow signup for any event including those on the current day
+                    // We no longer restrict based on start time
+                    
+                    // Create a date object for yesterday
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    // Only block signup if the event was before yesterday
+                    if (new Date(event.startTime) > yesterday) {
+                        footerButtons += `
+                            <form method="POST" action="/events/${eventId}/signup" class="d-inline">
+                                <button type="submit" class="btn btn-spice">
+                                    <i class="bi bi-check-circle"></i> Sign Up
+                                </button>
+                            </form>
+                        `;
+                    }
                 }
                 
                 if (event.canManage) {
@@ -848,11 +883,24 @@
                 
                 document.getElementById('eventModalFooter').innerHTML = footerButtons;
                 
+                // Show the modal using the global instance
+                if (eventModal) {
+                    eventModal.show();
+                }
+                
             } catch (error) {
+                console.error('Failed to load event details:', error);
                 document.getElementById('eventModalBody').innerHTML = 
                     `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> ${error.message}</div>`;
                 document.getElementById('eventModalFooter').innerHTML = 
                     '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>';
+                
+                // Show modal with error message
+                if (eventModal) {
+                    eventModal.show();
+                }
+                
+                showToast('error', 'Error loading event details');
             }
         }
         
@@ -1054,8 +1102,25 @@
             // Add modal to page
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             
+            // Set up modal hidden event handler to clean up properly
+            const statsModalElement = document.getElementById('statsModal');
+            statsModalElement.addEventListener('hidden.bs.modal', function () {
+                // Remove lingering backdrop
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.remove();
+                }
+                // Remove modal-open class from body
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                
+                // Optional: remove the modal from DOM when hidden
+                this.remove();
+            });
+            
             // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('statsModal'));
+            const modal = new bootstrap.Modal(statsModalElement);
             modal.show();
         }
         
