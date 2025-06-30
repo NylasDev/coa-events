@@ -17,6 +17,9 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy when running in production (behind nginx, cPanel, etc.)
+app.set('trust proxy', true);
+
 // Initialize Database Events Manager
 let eventsManager;
 
@@ -56,7 +59,16 @@ const limiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   message: 'Too many requests from this IP, please try again after 15 minutes',
-  skipSuccessfulRequests: true // Don't count successful requests against the rate limit
+  skipSuccessfulRequests: true, // Don't count successful requests against the rate limit
+  // Configure a custom key generator for production environment with proxy
+  keyGenerator: (req) => {
+    // Get the forwarded IP when behind a proxy, or the direct IP otherwise
+    const ip = req.headers['x-forwarded-for'] || 
+               req.connection.remoteAddress || 
+               req.socket.remoteAddress || 
+               req.connection.socket?.remoteAddress;
+    return ip;
+  }
 });
 
 // Middleware
@@ -85,10 +97,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback-secret-change-this',
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // Changed to true to ensure session is saved
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    secure: process.env.NODE_ENV === 'production' && process.env.APP_URL.startsWith('https'),
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax'
   }
 }));
 
@@ -181,7 +196,7 @@ function ensureAuthenticated(req, res, next) {
     return next();
   }
   req.flash('error', 'You need to login first.');
-  res.redirect('/');
+  res.redirect('/login');
 }
 
 // Middleware to check if user can manage events
@@ -376,7 +391,8 @@ app.post('/events/:id/remove-signup', ensureAuthenticated, async (req, res) => {
   res.redirect(req.headers.referer || '/dashboard');
 });
 
-app.get('/logout', (req, res) => {
+// Support both GET and POST for logout to ensure compatibility
+function handleLogout(req, res) {
   // First set a flash message (while session is still active)
   req.flash('success', 'You have been logged out successfully.');
   
@@ -393,8 +409,13 @@ app.get('/logout', (req, res) => {
         console.error('Session destruction error:', sessionErr);
       }
       
-      // Clear the session cookie directly
-      res.clearCookie('connect.sid');
+      // Clear the session cookie directly with proper options
+      res.clearCookie('connect.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production' && process.env.APP_URL.startsWith('https'),
+        sameSite: 'lax'
+      });
       
       // Redirect to home page with cache control headers to prevent browser caching
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -403,7 +424,11 @@ app.get('/logout', (req, res) => {
       res.redirect('/');
     });
   });
-});
+}
+
+// Support both GET and POST methods for logout
+app.get('/logout', handleLogout);
+app.post('/logout', handleLogout);
 
 // API Routes
 app.get('/api/user', ensureAuthenticated, (req, res) => {
