@@ -11,8 +11,9 @@ const flash = require('connect-flash');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const moment = require('moment');
-const { initializeDatabase, createDatabaseIfNotExists } = require('./lib/database');
+const { initializeDatabase, createDatabaseIfNotExists, sequelize } = require('./lib/database');
 const DatabaseEventsManager = require('./lib/databaseEventsManager');
+const SessionStore = require('express-session-sequelize')(session.Store);
 require('dotenv').config();
 
 const app = express();
@@ -98,11 +99,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback-secret-change-this',
-  resave: false,
-  saveUninitialized: true, // Changed to true to ensure session is saved
+  resave: true, // Changed to true to ensure sessions are saved
+  saveUninitialized: true, // Changed to true to ensure session ID is set
+  rolling: true, // Reset cookie maxAge on every response
+  store: new SessionStore({
+    db: sequelize,
+    tableName: 'sessions', // Match MySQL's lowercase table naming convention
+    checkExpirationInterval: 15 * 60 * 1000, // Clean up expired sessions every 15 minutes
+    expiration: 30 * 24 * 60 * 60 * 1000, // 30 day session expiration same as cookie
+  }),
   cookie: {
-    secure: process.env.NODE_ENV === 'production' && process.env.APP_URL.startsWith('https'),
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    // For local development, secure should be false
+    secure: false, // Set to true only in production with HTTPS
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer persistence
     path: '/',
     httpOnly: true,
     sameSite: 'lax'
@@ -119,6 +128,13 @@ app.use((req, res, next) => {
   res.locals.isAuthenticated = req.isAuthenticated();
   res.locals.messages = req.flash();
   res.locals.path = req.path; // Add current path for active navbar items
+  
+  // Debug logging for auth issues (development only)
+  if (process.env.NODE_ENV !== 'production') {
+    const sessionIdDisplay = req.sessionID ? req.sessionID.substring(0, 8) + '...' : 'undefined';
+    console.log(`[${new Date().toISOString()}] Path: ${req.path}, Auth: ${req.isAuthenticated()}, SessionID: ${sessionIdDisplay}`);
+  }
+  
   next();
 });
 
@@ -184,20 +200,37 @@ passport.use(new DiscordStrategy({
   }
 }));
 
+// Enhanced serialization with explicit user properties
 passport.serializeUser((user, done) => {
+  console.log('Serializing user:', user.id);
   done(null, user);
 });
 
 passport.deserializeUser((user, done) => {
-  done(null, user);
+  console.log('Deserializing user:', user.id);
+  // Return a cloned object to avoid passport/session reference issues
+  done(null, {...user});
 });
 
 // Middleware to check authentication
 function ensureAuthenticated(req, res, next) {
+  console.log('Checking auth status:', req.isAuthenticated(), 'User:', req.user ? req.user.id : 'undefined');
+  
   if (req.isAuthenticated()) {
+    // Explicitly touch the session on each authenticated request
+    // to ensure it doesn't expire while user is active
+    req.session.touch();
     return next();
   }
-  req.flash('error', 'You need to login first.');
+  
+  console.log('Authentication check failed, redirecting to login');
+  req.flash('error', 'Your session has expired or you need to login.');
+  
+  // Add cache control headers to prevent browser caching
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  
   res.redirect('/login');
 }
 
@@ -218,6 +251,11 @@ function ensureEventManager(req, res, next) {
 
 // Routes
 app.get('/', (req, res) => {
+  // If user is already authenticated, redirect to dashboard
+  if (req.isAuthenticated()) {
+    return res.redirect('/dashboard');
+  }
+  
   res.render('index', { 
     user: req.user,
     messages: req.flash()
@@ -241,14 +279,35 @@ app.get('/auth/discord/callback',
     failureFlash: true 
   }),
   (req, res) => {
-    res.redirect('/dashboard');
+    // Explicitly save session before redirecting
+    req.session.save(err => {
+      if (err) {
+        console.error('Error saving session:', err);
+        req.flash('error', 'Authentication problem. Please try again.');
+        return res.redirect('/login');
+      }
+      // Add cache control headers to prevent browser caching
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
+      console.log('Auth successful - redirecting to dashboard');
+      return res.redirect('/dashboard');
+    });
   }
 );
 
 app.get('/dashboard', ensureAuthenticated, async (req, res) => {
+  console.log('Dashboard access - authenticated user:', req.user ? req.user.id : 'undefined');
+  
   const currentDate = new Date();
   const year = parseInt(req.query.year) || currentDate.getFullYear();
   const month = parseInt(req.query.month) || (currentDate.getMonth() + 1);
+  
+  // Add cache control headers to prevent browser caching
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   
   const calendarData = await eventsManager.getCalendarData(year, month);
   const eventTypes = DatabaseEventsManager.getEventTypes();
@@ -303,6 +362,14 @@ app.get('/events/create', ensureEventManager, (req, res) => {
 
 app.post('/events/create', ensureEventManager, async (req, res) => {
   try {
+    // Debug logging for event creation
+    console.log('Event creation attempt:', {
+      title: req.body.title,
+      type: req.body.type,
+      date: req.body.date,
+      time: req.body.time
+    });
+    
     // Combine date and time inputs into a proper datetime
     const startTime = new Date(`${req.body.date}T${req.body.time}:00.000Z`);
     
@@ -396,6 +463,11 @@ app.post('/events/:id/remove-signup', ensureAuthenticated, async (req, res) => {
 // Support both GET and POST for logout
 function handleLogout(req, res) {
   try {
+    // Use Passport's logout function first
+    if (req.logout && typeof req.logout === 'function') {
+      req.logout();
+    }
+    
     // Destroy the session
     if (req.session) {
       req.session.destroy(function(sessionErr) {

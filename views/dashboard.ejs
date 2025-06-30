@@ -270,6 +270,10 @@
         .event-dd-extraction {
             border-left-color: #ffd700;
         }
+
+        .event-dd-base-creation {
+            border-left-color: #ffd700;
+        }
         
         .event-ore-stravidium {
             border-left-color: #9370db;
@@ -651,15 +655,18 @@
                             <div class="calendar-day <%= !isCurrentMonth ? 'other-month' : '' %> <%= isToday ? 'today' : '' %>">
                                 <div class="day-number"><%= currentDay.date() %></div>
                                 <% dayEvents.forEach(function(event) { %>
+                                    <!-- Event type: <%= event.type %> -->
                                     <div class="event-item event-<%= event.type %>" 
                                          data-bs-toggle="modal" 
                                          data-bs-target="#eventModal" 
                                          data-event-id="<%= event.id %>"
                                          onclick="loadEventDetails('<%= event.id %>')">
-                                        <% if (event.eventTypeInfo.icon.startsWith('/')) { %>
+                                        <% if (event.eventTypeInfo && event.eventTypeInfo.icon && event.eventTypeInfo.icon.startsWith('/')) { %>
                                             <img src="<%= event.eventTypeInfo.icon %>" alt="<%= event.eventTypeInfo.name %>" style="width: 16px; height: 16px; object-fit: contain; margin-right: 4px;">
-                                        <% } else { %>
+                                        <% } else if (event.eventTypeInfo && event.eventTypeInfo.icon) { %>
                                             <%= event.eventTypeInfo.icon %>
+                                        <% } else { %>
+                                            ❓
                                         <% } %>
                                         <%= event.title %>
                                         <% if (event.signupCount > 0) { %>
