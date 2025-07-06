@@ -177,11 +177,17 @@ passport.use(new DiscordStrategy({
     const userGuilds = profile.guilds || [];
     const allowedGuildId = process.env.ALLOWED_GUILD_ID;
     
+    // Log guilds for debugging
+    console.log(`User ${profile.username} is a member of ${userGuilds.length} guilds`);
+    
     const isInAllowedGuild = userGuilds.some(guild => guild.id === allowedGuildId);
     
     if (!isInAllowedGuild) {
+      console.log(`User ${profile.username} is not a member of the required Discord server (Guild ID: ${allowedGuildId})`);
       return done(null, false, { message: 'You are not a member of the required Discord server.' });
     }
+    
+    console.log(`User ${profile.username} is a member of the required Discord server`);
     
     // Store user data in session
     const user = {
@@ -196,25 +202,61 @@ passport.use(new DiscordStrategy({
     
     return done(null, user);
   } catch (error) {
+    console.error('Error during Discord authentication:', error);
     return done(error, null);
   }
 }));
 
 // Enhanced serialization with explicit user properties
 passport.serializeUser((user, done) => {
-  console.log('Serializing user:', user.id);
-  done(null, user);
+  console.log('Serializing user:', {
+    id: user.id,
+    username: user.username,
+    isAdmin: DatabaseEventsManager.canManageEvents(user)
+  });
+  
+  // Ensure we only serialize what's needed and remove any circular structures
+  const serializableUser = {
+    id: user.id,
+    username: user.username,
+    discriminator: user.discriminator,
+    avatar: user.avatar,
+    email: user.email,
+    // Store only guild IDs and permissions to avoid circular references
+    guilds: user.guilds ? user.guilds.map(g => ({
+      id: g.id,
+      name: g.name,
+      permissions: g.permissions
+    })) : [],
+    accessToken: user.accessToken
+  };
+  
+  done(null, serializableUser);
 });
 
 passport.deserializeUser((user, done) => {
-  console.log('Deserializing user:', user.id);
+  console.log('Deserializing user:', {
+    id: user.id,
+    username: user.username
+  });
+  
   // Return a cloned object to avoid passport/session reference issues
   done(null, {...user});
 });
 
 // Middleware to check authentication
 function ensureAuthenticated(req, res, next) {
-  console.log('Checking auth status:', req.isAuthenticated(), 'User:', req.user ? req.user.id : 'undefined');
+  console.log('Checking auth status:', {
+    isAuthenticated: req.isAuthenticated(),
+    user: req.user ? {
+      id: req.user.id,
+      username: req.user.username
+    } : 'undefined',
+    sessionID: req.sessionID ? req.sessionID.substring(0, 8) + '...' : 'undefined',
+    hasSession: !!req.session,
+    hasPassport: !!(req.session && req.session.passport),
+    passportUser: req.session && req.session.passport ? 'exists' : 'missing'
+  });
   
   if (req.isAuthenticated()) {
     // Explicitly touch the session on each authenticated request
@@ -224,6 +266,13 @@ function ensureAuthenticated(req, res, next) {
   }
   
   console.log('Authentication check failed, redirecting to login');
+  
+  // Check if session exists but authentication failed
+  if (req.session) {
+    console.log('Session exists but not authenticated. Session ID:', 
+      req.sessionID ? req.sessionID.substring(0, 8) + '...' : 'undefined');
+  }
+  
   req.flash('error', 'Your session has expired or you need to login.');
   
   // Add cache control headers to prevent browser caching
@@ -271,29 +320,90 @@ app.get('/login', (req, res) => {
   });
 });
 
+// Route for users who are not in the authorized Discord server
+app.get('/unauthorized-server', (req, res) => {
+  // You can add a Discord invite URL here if you have one
+  const discordInviteUrl = process.env.DISCORD_INVITE_URL || null;
+  res.render('unauthorized-server', { 
+    discordInviteUrl,
+    messages: req.flash()
+  });
+});
+
 app.get('/auth/discord', passport.authenticate('discord'));
 
 app.get('/auth/discord/callback', 
-  passport.authenticate('discord', { 
-    failureRedirect: '/login',
-    failureFlash: true 
-  }),
-  (req, res) => {
-    // Explicitly save session before redirecting
-    req.session.save(err => {
+  // Custom callback to handle both authentication and guild membership
+  (req, res, next) => {
+    passport.authenticate('discord', (err, user, info) => {
+      // If there was an error during authentication
       if (err) {
-        console.error('Error saving session:', err);
-        req.flash('error', 'Authentication problem. Please try again.');
+        console.error('Discord authentication error:', err);
+        req.flash('error', 'Authentication error. Please try again later.');
         return res.redirect('/login');
       }
-      // Add cache control headers to prevent browser caching
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
       
-      console.log('Auth successful - redirecting to dashboard');
-      return res.redirect('/dashboard');
-    });
+      // If user is not authenticated due to not being in the allowed guild
+      if (!user) {
+        console.log('Authentication failed - user not in allowed guild');
+        // Check if there's a message that mentions guild or server membership
+        if (info && info.message && info.message.toLowerCase().includes('not a member')) {
+          // Redirect to the specialized unauthorized-server page
+          return res.redirect('/unauthorized-server');
+        } else {
+          // Generic authentication failure
+          req.flash('error', (info && info.message) ? info.message : 'Authentication failed');
+          return res.redirect('/login');
+        }
+      }
+      
+      // If user is authenticated, establish session
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error('Error during login:', loginErr);
+          req.flash('error', 'Error during login. Please try again.');
+          return res.redirect('/login');
+        }
+        
+        // Debug the authenticated user
+        console.log('Authentication successful for user:', {
+          id: user.id,
+          username: user.username,
+          isAdmin: DatabaseEventsManager.canManageEvents(user)
+        });
+        
+        // Explicitly save session before redirecting
+        req.session.save(err => {
+          if (err) {
+            console.error('Error saving session:', err);
+            req.flash('error', 'Authentication problem. Please try again.');
+            return res.redirect('/login');
+          }
+          
+          // Add cache control headers to prevent browser caching
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+          
+          console.log('Auth successful - redirecting to dashboard');
+          
+          // Force regenerate the session to ensure changes are saved
+          req.session.regenerate(regenerateErr => {
+            if (regenerateErr) {
+              console.error('Error regenerating session:', regenerateErr);
+            }
+            
+            // Ensure the user is in the new session
+            req.session.passport = { user: user };
+            
+            // Save again and redirect
+            req.session.save(() => {
+              return res.redirect('/dashboard');
+            });
+          });
+        });
+      });
+    })(req, res, next);
   }
 );
 
